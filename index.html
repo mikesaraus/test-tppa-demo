@@ -1,0 +1,1994 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TPPA teller app: mock-up (not production)</title>
+<!--
+  PROTOTYPE / MOCK-UP for approval (spec step 7, D29, section 11.2). Throwaway: not part of the app.
+  Self-contained: no network, no fonts to download (the teller app works offline).
+  All names, numbers and codes are synthetic. Nothing is saved; reload resets everything.
+  Designed for the teller PCs: 1366 x 768 and up, keyboard first, touch friendly (44 px targets).
+-->
+<style>
+:root {
+  --paper: #f6f4ef; --sheet: #fffefb; --sheet-2: #fbfaf6;
+  --ink: #1c2530; --ink-2: #47515d; --ink-3: #626a76; --ink-4: #8c939c;
+  --rule: rgba(28,37,48,.10); --rule-2: rgba(28,37,48,.18);
+  --meter: #1f5ea8; --meter-dark: #1a5194; --meter-soft: #e8eff8;
+  --ok: #24693f; --ok-soft: #e3f1e8;
+  --warn: #8a5a0b; --warn-soft: #faf0dc;
+  --bad: #b0322a; --bad-soft: #f7e5e2;
+  --form: #fffdf4;
+  --on-accent: #ffffff;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+  --lift: 0 0 0 1px rgba(28,37,48,.07), 0 1px 2px -1px rgba(28,37,48,.08), 0 3px 8px rgba(28,37,48,.05);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+}
+[data-theme="dark"] {
+  --paper: #14181d; --sheet: #1c2229; --sheet-2: #222932;
+  --ink: #e8eaed; --ink-2: #c3c8cf; --ink-3: #9aa2ad; --ink-4: #737b86;
+  --rule: rgba(255,255,255,.08); --rule-2: rgba(255,255,255,.16);
+  --meter: #6aa5e8; --meter-dark: #8bb9ef; --meter-soft: #1d2e44;
+  --ok: #6fcf97; --ok-soft: #173325; --warn: #e3b25f; --warn-soft: #3a2d14; --bad: #f08a80; --bad-soft: #3d1f1c;
+  --form: #f4f1e6;
+  --on-accent: #0d1726;
+  --lift: 0 0 0 1px rgba(255,255,255,.06), 0 4px 14px rgba(0,0,0,.35);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font: 16px/1.45 var(--sans); color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+button, input, select { font: inherit; color: inherit; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--ink-3); }
+.small { font-size: 14px; }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+h2 { font-size: 19px; font-weight: 600; margin: 0; }
+h3 { font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; }
+p { margin: 0; }
+:focus-visible { outline: 3px solid var(--meter); outline-offset: 2px; }
+
+/* Controls: 44 px targets */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 8px;
+  border: 1px solid var(--rule-2); background: var(--sheet); font-weight: 600; cursor: pointer; transition: transform 100ms var(--ease), background-color 100ms; }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--meter); border-color: var(--meter); color: var(--on-accent); }
+.btn.danger { color: var(--paper); background: var(--bad); border-color: var(--bad); }
+.btn.danger-outline { color: var(--bad); }
+.btn.danger-outline:hover { background: var(--bad-soft); border-color: var(--bad); }
+.btn.small { min-height: 32px; padding: 0 8px; font-size: 13px; }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.big { min-height: 56px; font-size: 18px; padding: 0 24px; }
+.btn.add { background: var(--meter-soft); border-color: var(--meter); color: var(--meter); }
+.btn.add:hover { box-shadow: inset 0 0 0 1px var(--meter); }
+.btn.add .ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+kbd { font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--rule-2); border-bottom-width: 2px; background: var(--sheet-2); color: var(--ink-2); }
+.btn kbd { margin-left: 2px; }
+.btn.primary kbd, .btn.danger kbd { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.35); color: inherit; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.field .hint { font-size: 14px; color: var(--ink-3); }
+.field .err { font-size: 14px; color: var(--bad); font-weight: 500; }
+input, select { height: 48px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--rule-2); background: var(--sheet-2); font-size: 18px; }
+/* A field's control fills its column and may shrink with it (inputs otherwise keep ~20 characters of width and spill out of narrow columns). */
+.field input, .field select { width: 100%; min-width: 0; }
+input.big { height: 60px; font-size: 28px; font-family: var(--mono); letter-spacing: .02em; }
+input[aria-invalid="true"] { border-color: var(--bad); }
+.sheet { background: var(--sheet); border-radius: 12px; box-shadow: var(--lift); }
+.callout { border-radius: 8px; padding: 12px 14px; font-size: 15px; }
+.callout.info { background: var(--meter-soft); }
+.callout.warn { background: var(--warn-soft); color: var(--ink); }
+.callout.bad { background: var(--bad-soft); color: var(--ink); }
+.callout b { font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip.ok { color: var(--ok); background: var(--ok-soft); }
+.chip.warn { color: var(--warn); background: var(--warn-soft); }
+.chip.bad { color: var(--bad); background: var(--bad-soft); }
+.chip.off { color: var(--ink-3); background: var(--rule); }
+
+/* App frame */
+.app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--rule); gap: 16px; }
+/* The header (as built): mark and terminal, the four screens, the signed-in person. */
+.logo { flex: none; fill: #00a2ff; }
+.top .title { display: flex; align-items: center; gap: 12px; }
+.top .title-text { display: flex; flex-direction: column; line-height: 1.2; }
+/* The mark matches the 44 px controls beside it and the two-line title (40 px, as on the sign-in cards). */
+.top .title-text b { font-size: 17px; letter-spacing: -.01em; }
+.top nav { display: flex; gap: 8px; margin-left: auto; }
+.top nav .btn.on { background: var(--meter); border-color: var(--meter); color: var(--on-accent); }
+/* Sign-in, lock and set-up cards: the mark and name, then a rule, then the task (PR #43). */
+.brand { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; margin-bottom: 22px; border-bottom: 1px solid var(--rule); }
+.brand-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; line-height: 1.2; }
+.brand-text b { font-size: 20px; font-weight: 650; letter-spacing: -.015em; }
+.brand-text span { font-size: 14px; color: var(--ink-3); }
+.brand-aside { margin-left: auto; }
+.center .card { padding: 30px 32px 32px; }
+.center .card h1 { font-size: 24px; }
+.center .lead { margin-top: 6px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; }
+.facts dt { color: var(--ink-3); font-size: 14px; }
+.facts dd { margin: 0; }
+details summary { cursor: pointer; color: var(--ink-3); font-size: 14px; }
+details .field { margin-top: 10px; }
+/* The signed-in person, top right: Lock screen, Theme and Sign out (as built since PR #43). */
+.acctm { position: relative; }
+.account { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px 0 6px; border-radius: 999px; border: 1px solid var(--rule-2); background: var(--sheet); cursor: pointer; }
+.account:hover, .account[aria-expanded="true"] { background: var(--sheet-2); }
+.avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--meter-soft); color: var(--meter); font-size: 13px; font-weight: 700; }
+.account-name { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; font-size: 14px; }
+.account-name span { font-size: 12px; color: var(--ink-3); }
+.chev { width: 14px; height: 14px; fill: none; stroke: var(--ink-3); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); width: 290px; padding: 6px; border-radius: 10px; background: var(--sheet); box-shadow: var(--lift), 0 12px 32px rgba(0,0,0,.18); z-index: 30; display: flex; flex-direction: column; }
+.menu-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 0; border-radius: 6px; background: none; font-size: 15px; font-weight: 500; text-align: left; cursor: pointer; }
+.menu-item:hover, .menu-item:focus-visible { background: var(--meter-soft); outline: none; }
+.menu-label { padding: 8px 12px 6px; font-size: 14px; color: var(--ink-3); }
+.menu-label b { color: var(--ink); }
+.menu-sep { height: 1px; margin: 6px 4px; background: var(--rule); }
+.menu-item .menu-meta { font-size: 12px; font-weight: 400; color: var(--ink-3); }
+/* Theme: three small sheets of form paper, so the choice shows what it gives before it is made. */
+.theme { padding: 8px 12px 10px; }
+.theme-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.theme-opt { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 9px 4px 7px; border-radius: 8px; border: 1px solid var(--rule-2); background: var(--sheet-2); font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.theme-opt:hover { border-color: var(--ink-3); }
+.theme-opt[aria-checked="true"] { border-color: var(--meter); box-shadow: inset 0 0 0 1px var(--meter); background: var(--meter-soft); color: var(--ink); }
+.swatch { position: relative; width: 46px; height: 32px; border-radius: 4px; box-shadow: 0 0 0 1px rgba(128,128,128,.4); }
+.swatch::before, .swatch::after { content: ""; position: absolute; left: 8px; height: 3px; border-radius: 2px; background: var(--sw-ink); }
+.swatch::before { top: 10px; width: 26px; }
+.swatch::after { top: 18px; width: 16px; }
+/* Preview colours are fixed: each sheet shows its own theme whichever one is on. */
+.swatch.light { background: #fffefb; --sw-ink: #1c2530; }
+.swatch.dark { background: #1c2229; --sw-ink: #e8eaed; }
+.swatch.system { background: linear-gradient(135deg, #fffefb 50%, #1c2229 50%); --sw-ink: #8c939c; }
+.theme-note { margin-top: 8px; font-size: 13px; color: var(--ink-3); }
+main { overflow: auto; padding: 18px 20px; }
+.status { display: flex; align-items: center; gap: 18px; padding: 8px 20px; border-top: 1px solid var(--rule); font-size: 14px; color: var(--ink-2); flex-wrap: wrap; }
+.status .sep { flex: 1; }
+.status b { font-weight: 600; color: var(--ink); }
+/* The time now (Manila), to the second; a thin upright rule between the date and the time. */
+.clock { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; }
+.clock-sep { width: 1px; height: 14px; background: var(--rule-2); }
+.clock time { color: var(--ink); font-weight: 600; }
+
+/* Payment screen: flow on the left, money on the right */
+.pos { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(360px, 1fr); gap: 18px; height: 100%; }
+.flow { display: flex; flex-direction: column; gap: 12px; }
+.steps { display: flex; gap: 6px; }
+.steps span { flex: 1; text-align: center; padding: 8px; font-size: 14px; font-weight: 600; color: var(--ink-4); border-bottom: 3px solid var(--rule); }
+.steps span.done { color: var(--ink-3); border-color: var(--ok); }
+.steps span.on { color: var(--meter); border-color: var(--meter); }
+.panel { padding: 20px 22px; }
+.panel .lead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tabs .btn { flex: 1; }
+.tabs .btn.on { background: var(--meter); border-color: var(--meter); color: var(--on-accent); }
+.quick { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 12px; }
+.quick .btn { padding: 0 6px; font-family: var(--mono); }
+.actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.paidtoday { margin-top: 10px; }
+
+/* Money summary */
+.money { display: flex; flex-direction: column; padding: 20px 22px; }
+.money .acct { padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.money .acct .l1 { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
+.money .acct .l2 { display: flex; justify-content: space-between; font-size: 14px; color: var(--ink-3); }
+.money .empty { color: var(--ink-3); padding: 18px 0; }
+.line { display: flex; justify-content: space-between; padding: 6px 0; font-size: 17px; }
+.line.total { font-size: 24px; font-weight: 700; border-top: 2px solid var(--ink); margin-top: 8px; padding-top: 10px; }
+.amount { font-family: var(--mono); }
+.change { margin-top: auto; border-radius: 12px; padding: 14px 18px; text-align: right; background: var(--ok-soft); }
+.change .lbl { font-size: 15px; font-weight: 600; color: var(--ok); text-transform: uppercase; letter-spacing: .06em; }
+.change .val { font-family: var(--mono); font-size: 46px; font-weight: 700; color: var(--ok); line-height: 1.1; }
+.change.short { background: var(--bad-soft); }
+.change.short .lbl, .change.short .val { color: var(--bad); }
+.change.none { background: var(--sheet-2); }
+.change.none .lbl, .change.none .val { color: var(--ink-4); }
+
+/* Receipt preview */
+.receipts { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 8px; }
+.receipt { background: var(--form); color: #2b2d55; font: 12px/1.35 var(--mono); padding: 12px 14px; border-radius: 4px; box-shadow: var(--lift); white-space: pre; min-width: 330px; }
+.receipt b { font-weight: 700; }
+
+/* Overlays */
+.scrim { position: fixed; inset: 0; background: rgba(15,20,26,.45); display: flex; align-items: center; justify-content: center; z-index: 20; }
+.modal { width: min(560px, 94vw); padding: 24px 26px; }
+.modal h2 { margin-bottom: 6px; }
+.center { min-height: 100%; display: flex; align-items: center; justify-content: center; }
+.card { width: min(460px, 94vw); padding: 28px 30px; }
+.card.wide { width: min(960px, 96vw); }
+.card.wide .facts dd { overflow-wrap: anywhere; }
+/* A tick box with its text: an 18 px box centred on the first line, 10 px before the text, the
+ * whole label clickable (24 px and more high). Not the 48 px text-field height. */
+.check { display: flex; align-items: flex-start; gap: 10px; min-height: 24px; font-size: 14px; line-height: 20px; cursor: pointer; }
+.check input[type="checkbox"] { flex: none; width: 18px; height: 18px; margin: 1px 0 0; padding: 0; accent-color: var(--meter); cursor: pointer; }
+.nr-cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.card .stack { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+.regcode { text-transform: uppercase; letter-spacing: .12em; text-align: center; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+td.num, th.num { text-align: right; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: center; margin-top: 12px; }
+.toast { position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 8px; font-weight: 500; z-index: 30; box-shadow: var(--lift); }
+
+/* Every signed-in screen except Payment: title and one line of explanation, then the content (PR #43). */
+.page { display: flex; flex-direction: column; gap: 16px; }
+.page-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.page-head .lead { max-width: 78ch; }
+.title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* Utility picker (PR #43, #44, #45): the terminal's default, folded; Change unfolds the tiles. */
+.label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.panel .field + .grid2 { margin-top: 14px; }
+.utilities { display: grid; gap: 10px; }
+.utility { position: relative; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 40px 10px 12px; border-radius: 10px; border: 1px solid var(--rule-2); background: var(--sheet-2); text-align: left; cursor: pointer; transition: border-color 120ms var(--ease), background-color 120ms var(--ease); }
+.utility:hover { border-color: var(--ink-3); }
+.utility.on { border-color: var(--meter); background: var(--meter-soft); box-shadow: inset 0 0 0 1px var(--meter); }
+.util-code { flex: none; padding: 3px 8px; border-radius: 6px; background: var(--sheet); border: 1px solid var(--rule-2); font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+.utility.on .util-code { background: var(--meter); border-color: var(--meter); color: var(--on-accent); }
+.util-name { font-size: 16px; font-weight: 600; line-height: 1.25; }
+.utility .tick { position: absolute; right: 12px; width: 18px; height: 18px; fill: none; stroke: var(--meter); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.utility.on .tick { opacity: 1; }
+.utility.chosen { width: 100%; min-height: 52px; padding-right: 12px; box-shadow: none; }
+.util-change { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; color: var(--meter); }
+.util-change svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.utility-fixed { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
+
+/* Today (PR #43): four numbers, then the receipts. */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { padding: 12px 16px; border-radius: 12px; background: var(--sheet); box-shadow: var(--lift); }
+.stat .lbl { font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.stat .val { margin-top: 2px; font-family: var(--mono); font-size: 22px; font-weight: 600; }
+.stat.strong .val { color: var(--meter); }
+.callout.ok { background: var(--ok-soft); }
+.today { overflow: auto; }
+.today td { padding: 12px; vertical-align: middle; }
+.today th:first-child, .today td:first-child { padding-left: 20px; }
+.today th:last-child, .today td:last-child { padding-right: 20px; }
+.today tbody tr:last-child td { border-bottom: 0; }
+.today .or, .today .payee { font-weight: 600; }
+.today .amount { font-weight: 600; white-space: nowrap; }
+.today tr.voided .amount { text-decoration: line-through; color: var(--ink-3); }
+.today tr.voided .or, .today tr.voided .payee { color: var(--ink-2); }
+.tag { display: inline-block; padding: 2px 10px; border-radius: 6px; background: var(--sheet-2); border: 1px solid var(--rule); font-size: 14px; }
+.status-cell { display: flex; align-items: center; gap: 8px; }
+.reprints { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--meter-soft); color: var(--meter); font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.reprints svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; }
+.row-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Kiosk credit refund (K5d, as built): the code checked with head office, then a manager. */
+.modal.refund { width: min(640px, 92vw); display: flex; flex-direction: column; gap: 12px; }
+.modal.refund h2 { margin: 0; }
+.modal.refund .code-input { font: 600 22px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.credit-facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; padding: 14px 16px; border-radius: 10px; background: var(--sheet-2, rgba(0,0,0,.03)); }
+.credit-facts dt { color: var(--ink-3); }
+.credit-facts dd { margin: 0; font-weight: 600; }
+.credit-facts .amount { font: 700 26px var(--mono); }
+.page-head .title-row .btn { margin-left: auto; }
+/* Void (as built): one form, the reason, then the manager's own username and password. */
+.modal.void { width: min(620px, 92vw); display: flex; flex-direction: column; gap: 12px; }
+.modal.void h2 { margin: 0; }
+.modal .stack { display: flex; flex-direction: column; gap: 14px; }
+.modal.void .actions { margin-top: 4px; }
+
+/* Day end (PR #43): the drawer count on the left, the checklist on the right. */
+.day-end { height: auto; align-items: start; }
+.drawer { padding: 18px 0 6px; }
+.drawer-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 0 22px 8px; }
+.drawer tr.group th { padding-top: 14px; }
+.drawer td { padding: 4px 12px; }
+.drawer td:first-child, .drawer th:first-child { padding-left: 22px; }
+.drawer td:last-child { padding-right: 22px; }
+.drawer .denom { font-weight: 600; width: 120px; }
+.drawer .times { width: 24px; color: var(--ink-3); text-align: center; }
+.drawer tr.zero td.num { color: var(--ink-3); }
+/* Counts read like a calculator: right-aligned figures, 44 px tall to tap. */
+.drawer input.count { height: 44px; width: 120px; padding: 0 12px; font-family: var(--mono); font-size: 18px; text-align: right; }
+.drawer input.count::placeholder { color: var(--ink-3); }
+.drawer tr:not(.zero) .denom { color: var(--ink); }
+.drawer tr.zero .denom { color: var(--ink-2); }
+.drawer tfoot td { border-bottom: 0; border-top: 2px solid var(--ink); font-size: 18px; font-weight: 700; padding-top: 12px; }
+.day-end .money, .day-closed .money { gap: 4px; }
+.day-end .change, .day-closed .change { margin: 10px 0 6px; }
+.figures { margin: 8px 0; border-top: 1px solid var(--rule); padding-top: 6px; }
+.line.small-line { font-size: 15px; padding: 3px 0; color: var(--ink-2); }
+.figures-box { margin-top: 10px; }
+.figures-box h3 { margin-bottom: 2px; }
+.money .stack { display: flex; flex-direction: column; gap: 12px; margin: 8px 0; }
+.money .figures-box { margin: 0 0 8px; }
+.money .figures-box + p { margin-bottom: 10px; }
+.float-line { align-items: center; }
+.float-value { display: inline-flex; align-items: center; gap: 10px; }
+.cash-head { margin: 6px 0 2px; padding-top: 12px; border-top: 1px solid var(--rule); }
+/* A branch manager's approval: right under the difference that needs it, the fields one under the other. */
+.approval { display: flex; flex-direction: column; gap: 12px; margin: 4px 0 12px; padding: 14px 16px; border-radius: 10px; background: var(--warn-soft); box-shadow: inset 0 0 0 1px rgba(152,98,12,.25); }
+.approval-title { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
+.approval-title svg { flex: none; width: 20px; height: 20px; fill: none; stroke: var(--warn); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.approval p { font-size: 14px; color: var(--ink-2); }
+.approval input { background: var(--sheet); }
+.approval .callout.bad { background: var(--sheet); box-shadow: inset 3px 0 0 var(--bad); }
+.approval-fields { display: flex; flex-direction: column; gap: 12px; }
+.day-closed { max-width: 1100px; }
+.closed-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr); gap: 18px; align-items: stretch; }
+.z-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.grow { flex: 1; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Start of day (PR #29): the opening float before the first payment. */
+.float-card { max-width: 640px; }
+.float-card input.big { height: 56px; font-size: 26px; }
+
+/* Printer (F11, as built): which printer, and where it prints on the form. */
+/*
+ * Printer (F11). Left, the focal point: the form as it comes out of the printer. The pre-printed
+ * boxes stay put; the printed text moves with the offsets, so a nudge is seen before it is
+ * printed. Right: the printer, then the four calibration steps in order.
+ */
+.printer-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(360px, 1fr); gap: 18px; align-items: start; }
+.printer-screen .panel { display: flex; flex-direction: column; gap: 14px; }
+.preview-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+/*
+ * The form, to scale, from the receipt layout in force: one character column is 1ch, one row
+ * is (cpi / lpi) ch, so the page keeps its real proportions and an offset moves the print by its
+ * real distance. The font is sized to fit the card (container units); the monospace advance is
+ * about 0.6em, so the page never overflows.
+ */
+.form-wrap { container-type: inline-size; padding: 2px 0 4px; }
+.form-sheet { --row: calc(var(--cpi) / var(--lpi) * 1ch); position: relative; width: max-content; margin: 0 auto; padding: 8px 26px; background: #fffdf4; color: #2b2d55; border-radius: 3px; box-shadow: var(--lift);
+  font-family: var(--mono); font-size: clamp(6px, calc((100cqw - 56px) / var(--page-cols) / 0.6), 12px); }
+/* Tractor-feed holes in the strips either side of the page. */
+.form-sheet::before, .form-sheet::after { content: ""; position: absolute; top: 0; bottom: 0; width: 18px; background: radial-gradient(circle at 9px 9px, var(--paper) 3.5px, transparent 4px) 0 0 / 18px 18px repeat-y; }
+.form-sheet::before { left: 2px; } .form-sheet::after { right: 2px; }
+.form-page { position: relative; width: calc(var(--page-cols) * 1ch); height: calc(var(--rows) * var(--row)); overflow: hidden; }
+.form-grid { position: absolute; top: 0; left: calc(var(--margin-cols) * 1ch); width: calc(var(--cols) * 1ch); height: 100%; }
+/* Pre-printed on the form (it does not move): the header and footer, hatched; the cut. */
+.preprinted-band { position: absolute; left: calc(var(--margin-cols) * -1ch); right: calc(var(--margin-cols) * -1ch); display: flex; align-items: center; justify-content: center; background: repeating-linear-gradient(135deg, rgba(104,112,124,.10) 0 5px, transparent 5px 10px); color: #5f6773; text-align: center; overflow: hidden; }
+.preprinted-band > span { font: 11px/1.2 var(--sans); padding: 0 12px; }
+.preprinted-band.top { top: 0; border-bottom: 1px dashed rgba(104,112,124,.55); }
+.preprinted-band.bottom { bottom: 0; border-top: 1px dashed rgba(104,112,124,.55); }
+.form-print { position: absolute; inset: 0; margin: 0; font: inherit; line-height: var(--row); white-space: pre; transform: translate(calc(var(--dx) * 1ch), calc(var(--dy) * var(--row))); transition: transform 120ms var(--ease); }
+.form-print .f { color: #1f5ea8; }
+.preview-tabs { display: inline-flex; padding: 3px; gap: 3px; border-radius: 10px; background: var(--sheet-2); border: 1px solid var(--rule); }
+.preview-tabs .btn { min-height: 34px; padding: 0 12px; font-size: 14px; font-weight: 600; border-color: transparent; background: transparent; }
+.preview-tabs .btn[aria-pressed="true"] { background: var(--sheet); box-shadow: var(--lift); }
+.layout-chip { font-size: 13px; color: var(--ink-3); }
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; font-size: 13px; color: var(--ink-3); }
+.legend i { display: inline-block; width: 18px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+.legend .k-pre { background: repeating-linear-gradient(135deg, rgba(104,112,124,.35) 0 3px, transparent 3px 6px); border: 1px solid rgba(104,112,124,.5); }
+.legend .k-cut { width: 0; height: 12px; border-left: 1px dashed #888e96; border-radius: 0; }
+.legend .k-print { background: #2b2d55; height: 3px; vertical-align: 2px; }
+/* Calibration steps: a real sequence, so numbered. */
+.cal-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cal-step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--rule); }
+.cal-step:first-child { border-top: 0; padding-top: 2px; }
+.cal-step .n { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--meter-soft); color: var(--meter); font-size: 14px; font-weight: 700; }
+.cal-step .body { display: flex; flex-direction: column; gap: 10px; }
+.cal-step .body > b { font-weight: 600; line-height: 28px; }
+/* The nudge pad: the four arrows where they point, the shift so far beside it. */
+.adjust { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; }
+.pad { display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); gap: 6px; }
+.pad .btn { min-height: 48px; padding: 0; }
+.pad .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pad [data-nudge="y:-1"] { grid-area: 1 / 2; } .pad [data-nudge="x:-1"] { grid-area: 2 / 1; }
+.pad [data-nudge="x:1"] { grid-area: 2 / 3; } .pad [data-nudge="y:1"] { grid-area: 3 / 2; }
+.pad .pad-mid { grid-area: 2 / 2; display: grid; place-items: center; border-radius: 8px; background: var(--sheet-2); color: var(--ink-3); font-size: 12px; }
+.shifts { display: flex; flex-direction: column; gap: 10px; }
+.shift .lbl { font-size: 13px; color: var(--ink-3); }
+.shift .val { font-family: var(--mono); font-size: 22px; font-weight: 600; line-height: 1.2; }
+.shift .units { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.save-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 1100px) { .printer-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Mock-up controls (not part of the app) */
+/* Mock-up controls (not in the app): dark, compact, an 8 px grid, 12-13 px type, a visible focus. */
+.mock { --m-bg: #12171c; --m-bg2: #1c232b; --m-line: #33404c; --m-ink: #e8eaed; --m-ink2: #a9b1bb; --m-on: #3b82f6;
+  position: fixed; right: 12px; bottom: 44px; z-index: 40; font: 13px/1.35 var(--sans); color: var(--m-ink); }
+.mock button, .mock select { font: inherit; color: inherit; }
+.mock [hidden] { display: none !important; }
+.mock :focus-visible { outline: 2px solid #8ab4ff; outline-offset: 2px; }
+.mock-pill { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid var(--m-line); background: var(--m-bg); box-shadow: 0 6px 20px rgba(0,0,0,.3); cursor: pointer; font-weight: 600; }
+.mock-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--m-on); }
+.mock-panel { width: 320px; max-height: min(560px, calc(100vh - 64px)); display: flex; flex-direction: column; background: var(--m-bg); border: 1px solid var(--m-line); border-radius: 12px; box-shadow: 0 10px 34px rgba(0,0,0,.4); overflow: hidden; }
+.mock-head { display: flex; align-items: center; gap: 8px; padding: 10px 8px 8px 14px; }
+.mock-head .tag { font-size: 11px; color: var(--m-ink2); }
+.mock-x { margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 18px; line-height: 1; }
+.mock-x:hover { background: var(--m-bg2); }
+.mock-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin: 0 8px; padding: 2px; background: var(--m-bg2); border-radius: 8px; }
+.mock-tabs button { height: 28px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 12px; color: var(--m-ink2); }
+.mock-tabs [aria-selected="true"] { background: var(--m-bg); color: var(--m-ink); font-weight: 600; }
+.mock-body { overflow-y: auto; padding: 10px 14px 14px; scrollbar-width: thin; scrollbar-color: var(--m-line) transparent; }
+.mock-body section { display: flex; flex-direction: column; gap: 8px; }
+.mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mock-list { display: flex; flex-direction: column; gap: 6px; }
+.mock-grid button, .mock-list button { min-height: 32px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--m-line); background: var(--m-bg2); cursor: pointer; font-size: 12px; text-align: left; }
+.mock-grid button:hover, .mock-list button:hover { border-color: #4d5c6b; }
+.mock-grid [aria-current="page"] { border-color: var(--m-on); box-shadow: inset 0 0 0 1px var(--m-on); }
+.mock-field { display: grid; gap: 4px; font-size: 12px; color: var(--m-ink2); margin-top: 4px; }
+.mock-field select { height: 30px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--m-line); background: var(--m-bg2); }
+.tg { display: flex; gap: 10px; align-items: flex-start; padding: 4px 0; cursor: pointer; }
+.tg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tg .sw { flex: none; position: relative; width: 30px; height: 18px; margin-top: 1px; border-radius: 9px; background: #3a4552; transition: background 120ms; }
+.tg .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 120ms; }
+.tg input:checked + .sw { background: var(--m-on); }
+.tg input:checked + .sw::after { transform: translateX(12px); }
+.tg input:focus-visible + .sw { outline: 2px solid #8ab4ff; outline-offset: 2px; }
+.tg small { display: block; font-size: 11px; color: var(--m-ink2); }
+.mock-dl { margin: 0; display: grid; gap: 6px; font-size: 12px; }
+.mock-dl dt { color: var(--m-ink2); }
+.mock-dl dd { margin: 0 0 4px; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!--
+  Mock-up controls (not in the app). Compact and out of the way: a pill when closed; open, four
+  tabs so only one short list shows at a time, the body scrolls inside the window. Remembers
+  open / closed and the tab (localStorage "tppa-mock-panel").
+-->
+<aside class="mock" id="mock" aria-label="Mock-up controls (not in the app)">
+  <button class="mock-pill" id="mock-open" type="button" aria-expanded="false" aria-controls="mock-panel">
+    <span class="dot" aria-hidden="true"></span>Mock-up controls
+  </button>
+  <div class="mock-panel" id="mock-panel" hidden>
+    <div class="mock-head">
+      <b>Mock-up controls</b><span class="tag">not in the app</span>
+      <button class="mock-x" id="mock-close" type="button" aria-label="Close the mock-up controls">&times;</button>
+    </div>
+    <div class="mock-tabs" role="tablist" aria-label="Controls">
+      <button role="tab" id="mt-screens" aria-controls="mp-screens" aria-selected="true">Screens</button>
+      <button role="tab" id="mt-situations" aria-controls="mp-situations" aria-selected="false" tabindex="-1">Situations</button>
+      <button role="tab" id="mt-office" aria-controls="mp-office" aria-selected="false" tabindex="-1">Head office</button>
+      <button role="tab" id="mt-help" aria-controls="mp-help" aria-selected="false" tabindex="-1">Sign-in help</button>
+    </div>
+    <div class="mock-body">
+      <section role="tabpanel" id="mp-screens" aria-labelledby="mt-screens">
+        <div class="mock-grid">
+          <button data-go="register">Registration</button>
+          <button data-go="signin">Sign-in</button>
+          <button data-go="pay">Payment</button>
+          <button data-go="locked">Lock</button>
+          <button data-go="today">Today</button>
+          <button data-go="dayend">Day end</button>
+          <button data-go="printer">Printer</button>
+          <button data-act="new-day">Start a new day</button>
+        </div>
+        <label class="mock-field">Receipt layout
+          <select id="m-layout"><option value="two">Two copies (default)</option><option value="one">One copy</option></select></label>
+      </section>
+      <section role="tabpanel" id="mp-situations" aria-labelledby="mt-situations" hidden>
+      <label class="tg"><input type="checkbox" id="m-online" checked><span class="sw" aria-hidden="true"></span><span class="tx">Network online</span></label>
+      <label class="tg"><input type="checkbox" id="m-paper"><span class="sw" aria-hidden="true"></span><span class="tx">Printer out of paper</span></label>
+      <label class="tg"><input type="checkbox" id="m-midpaper"><span class="sw" aria-hidden="true"></span><span class="tx">Paper runs out<small>during the next print</small></span></label>
+      <label class="tg"><input type="checkbox" id="m-low"><span class="sw" aria-hidden="true"></span><span class="tx">OR numbers running low</span></label>
+      <label class="tg"><input type="checkbox" id="m-clock"><span class="sw" aria-hidden="true"></span><span class="tx">Clock 7 min off</span></label>
+      <label class="tg"><input type="checkbox" id="m-stale"><span class="sw" aria-hidden="true"></span><span class="tx">Settings older than 36 h</span></label>
+      <label class="tg"><input type="checkbox" id="m-dark"><span class="sw" aria-hidden="true"></span><span class="tx">Windows set to dark</span></label>
+      <label class="tg"><input type="checkbox" id="m-one"><span class="sw" aria-hidden="true"></span><span class="tx">One utility at this branch</span></label>
+      <label class="tg"><input type="checkbox" id="m-carried"><span class="sw" aria-hidden="true"></span><span class="tx">Set up again today<small>3 earlier payments (OR 115 to 117, one voided) from head office</small></span></label>
+      </section>
+      <section role="tabpanel" id="mp-office" aria-labelledby="mt-office" hidden>
+        <div class="mock-list">
+          <button data-go="reset">Head office resets the registration</button>
+          <button data-go="notrec" data-reason="terminal">Server does not know this terminal</button>
+          <button data-go="notrec" data-reason="key">Server does not know this key</button>
+          <button data-go="notrec" data-reason="unknown">Server does not say why (older server)</button>
+        </div>
+      <label class="tg"><input type="checkbox" id="m-unsent"><span class="sw" aria-hidden="true"></span><span class="tx">6 records not sent yet<small>3 of them payments; off: only 2 sign-in records</small></span></label>
+      </section>
+      <section role="tabpanel" id="mp-help" aria-labelledby="mt-help" hidden>
+        <dl class="mock-dl">
+          <dt>Teller</dt><dd><b>areyes</b> (online recently) or <b>bsantos</b> (not within 36 h), any password</dd>
+          <dt>Manager</dt><dd><b>mgarcia</b>, any password; <b>wrong</b> is refused</dd>
+          <dt>Kiosk credit</dt><dd>Today, Refund a kiosk credit: <b>KC-7F3Q-9MXD</b> (&#8369;700, this branch), <b>KC-H2RW-4TZP</b> (another branch), <b>KC-AAAA-BBBB</b> (already refunded). Turn the network off for the offline refusal.</dd>
+        </dl>
+      </section>
+    </div>
+  </div>
+</aside>
+
+<script>
+'use strict'
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const PESO = '₱'
+/* Money in centavos (the app uses decimal strings; integers keep the mock exact). */
+const fmt = (c) => (c < 0 ? '-' : '') + PESO + (Math.abs(c) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const parseAmt = (s) => { const v = String(s).replace(/[^\d.]/g, ''); if (!v || !/^\d+(\.\d{0,2})?$/.test(v)) return null; return Math.round(parseFloat(v) * 100) }
+const FEE = 200, FEE_VATABLE = 179, FEE_VAT = 21
+
+const known = {
+  '12345678901': { name: 'JUAN DELA CRUZ', paidToday: '9:14 AM, OR 0001-01-00000118' },
+  '20401234567': { name: 'MARIA SANTOS' },
+  '30155500012': { name: 'PEDRO REYES' },
+}
+const state = {
+  screen: 'register', online: true, paperOut: false, orLow: false, clockOff: false, stale: false,
+  teller: null, shiftStart: '8:02 AM', pending: 0, orNext: 126, orEnd: 1000, txn: 126,
+  step: 'account', accounts: [], draft: { digits: '', name: '', amount: '' },
+  // receivedAuto: the box holds the amount due, filled in (as in the app); typing or a bill ends it.
+  method: 'CASH', received: 0, receivedText: '', receivedAuto: true, cheque: { no: '', date: '', bank: '', type: 'LOCAL' }, debitRef: '',
+  printed: null, today: [], help: false, modal: null, voidNotice: null,
+  // A reprint away from the Printed panel (Today's Reprint, or F9): what happened, as a notice.
+  // lastTender: the ORs of the last tender, which F9 prints again (all of them).
+  reprintNotice: null, lastTender: [], midPaper: false, payErr: null, checkNote: null,
+  // Theme: kept on this computer (not per teller); 'system' follows Windows.
+  menu: false, theme: 'system',
+  // Utility picker: the terminal's default (set in the console), folded until Change.
+  utility: 'DLP', pickerOpen: false, oneUtility: false,
+  // Day end: opening float declared at the start of the day; the count; the closed day.
+  float: 200000, floatEdit: false, count: {}, closeErr: null, closed: null, zPrint: null,
+  floatNeeded: false, floatText: '2000.00',
+  // Printer (F11): the chosen printer and the saved and unsaved offsets.
+  printer: 'EPSON LX-310', offset: { x: 0, y: 0 }, savedOffset: { x: 0, y: 0 }, printerMsg: null,
+  // The receipt layout in force (from head office): 'two' (the default) or 'one'; the preview shows the test page or a sample.
+  layoutInForce: 'two', previewMode: 'test',
+  // After a registration reset the same day: the day so far as head office has it (dayCarried),
+  // added to the Z-reading and the cash expected; null otherwise.
+  carried: null,
+}
+const CARRIED = { count: 3, first: '0001-01-00000115', last: '0001-01-00000117', cash: 300400, cashCount: 2, voided: 150200, voidCount: 1, reprints: 1 }
+const PRINTERS = [['EPSON LX-310', false], ['Microsoft Print to PDF', true]]
+const UTILITIES = [
+  { code: 'DLP', name: 'Davao Light and Power Co.' },
+  { code: 'VECO', name: 'Visayan Electric Co.' },
+  { code: 'CLPC', name: 'Cotabato Light and Power Co.' },
+]
+const DEFAULT_UTILITY = 'DLP'
+const branchUtilities = () => (state.oneUtility ? UTILITIES.slice(0, 1) : UTILITIES)
+const utilityOf = (code) => UTILITIES.find((u) => u.code === code)
+const THEMES = [['system', 'Auto'], ['light', 'Light'], ['dark', 'Dark']]
+// A few earlier payments today, for "Today" and the day-end count: one reprinted, one voided.
+const EARLIER = [
+  ['30155500012', 'PEDRO REYES', 89050, 'CASH', '8:31 AM', 'VALID', 1],
+  ['12345678901', 'JUAN DELA CRUZ', 150000, 'CASH', '9:14 AM', 'VALID', 0],
+  ['20401234567', 'MARIA SANTOS', 230075, 'CHEQUE', '10:02 AM', 'VALID', 0],
+  ['30155500099', 'ROSA LIM', 45000, 'CASH', '10:40 AM', 'VOIDED', 0],
+]
+EARLIER.forEach(([acct, name, amount, method, time, status, reprints], i) => {
+  state.today.push({ or: orStr(118 + i * 2), time, acct, name, amount, fee: FEE, method, status, reprints, utility: 'DLP', voidReason: status === 'VOIDED' ? 'Wrong account entered' : null })
+})
+state.lastTender = [state.today.at(-1).or]
+function orStr(n) { return '0001-01-' + String(n).padStart(8, '0') }
+/* Davao Light's mask: ###-####-#### (PR #43). Display only; payments keep the digits. */
+function maskAcct(d) { return [d.slice(0, 3), d.slice(3, 7), d.slice(7, 11)].filter(Boolean).join('-') }
+const totals = () => {
+  const due = state.accounts.reduce((s, a) => s + a.amount + FEE, 0)
+  return { due, change: state.received - due }
+}
+
+/* ---------------------------------------------------------------- frame */
+function render() {
+  document.documentElement.dataset.theme = isDark() ? 'dark' : 'light'
+  const app = $('#app')
+  if (state.screen === 'register') { app.innerHTML = registerScreen(); afterRender(); return }
+  if (state.screen === 'signin') { app.innerHTML = signInScreen(); afterRender(); return }
+  if (state.screen === 'locked') { app.innerHTML = lockScreen(); afterRender(); return }
+  if (state.screen === 'reset') { app.innerHTML = resetScreen(); afterRender(); return }
+  if (state.screen === 'notrec') { app.innerHTML = notRecognisedScreen(); afterRender(); return }
+  const body = { pay: payScreen, today: todayScreen, dayend: dayEndScreen, printer: printerScreen }[state.screen]()
+  app.innerHTML = '<div class="app">' + topBar() + '<main>' + blockers() + body + '</main>' + statusBar() + '</div>' +
+    (state.help ? helpOverlay() : '') + (state.modal ? state.modal() : '')
+  afterRender()
+}
+const TERMINAL = 'Terminal 01 &middot; Digos 0001'
+/* The TPPA mark (blue blocks), as in the app's Logo.tsx. Decorative: the name is always next to it. */
+const logo = (size) => `<svg class="logo" viewBox="0 0 1166 1153" width="${size}" height="${size}" aria-hidden="true" focusable="false">
+  <rect width="1166" height="240"/><rect y="370" width="243" height="783"/><rect x="344" y="240" width="241" height="913"/>
+  <rect x="585" y="370" width="581" height="225"/><rect x="701" y="730" width="465" height="423"/></svg>`
+/* The top of the sign-in, lock and set-up cards: mark, name, which terminal, and optionally online. */
+const brand = (detail = 'Teller terminal', aside = '') => `<div class="brand">${logo(40)}
+  <div class="brand-text"><b>TPPA Payments</b><span>${detail}</span></div>${aside ? `<div class="brand-aside">${aside}</div>` : ''}</div>`
+const onlineChip = () => (state.online ? '<span class="chip ok">Online</span>' : '<span class="chip warn">Offline</span>')
+/* As built: the four screens are tabs with their keys; Help is F1 (no button). */
+function topBar() {
+  const tab = (k, label, key) => `<button class="btn ${state.screen === k ? 'on' : ''}" data-nav="${k}" aria-pressed="${state.screen === k}">${label} <kbd>${key}</kbd></button>`
+  return `<header class="top">
+    <div class="title">${logo(40)}<div class="title-text"><b>TPPA Payments</b><span class="muted small">${TERMINAL}</span></div></div>
+    <nav>${tab('pay', 'Payment', 'F2')}${tab('today', 'Today', 'F7')}${tab('dayend', 'Day end', 'F10')}${tab('printer', 'Printer', 'F11')}</nav>
+    ${accountMenu()}
+  </header>`
+}
+/* The signed-in person: Theme first, then Help and Lock screen, then Sign out with the shift's start. */
+function accountMenu() {
+  const name = state.teller?.name || ''
+  const initials = name.split(/\s+/).map((p) => p[0] || '').join('').slice(0, 2).toUpperCase()
+  const menu = `<div class="menu" role="menu">
+    ${themePicker()}
+    <div class="menu-sep"></div>
+    <button class="menu-item" role="menuitem" data-act="help">Help and shortcuts <kbd>F1</kbd></button>
+    <button class="menu-item" role="menuitem" data-act="lock">Lock screen <kbd>F12</kbd></button>
+    <div class="menu-sep"></div>
+    <button class="menu-item" role="menuitem" data-act="signout">Sign out <span class="menu-meta">Shift since ${state.shiftStart}</span></button>
+  </div>`
+  return `<div class="acctm">
+    <button class="account" data-act="menu" aria-haspopup="menu" aria-expanded="${state.menu}" aria-label="${esc(name)}: lock, theme or sign out">
+      <span class="avatar" aria-hidden="true">${initials}</span>
+      <span class="account-name"><b>${esc(name)}</b><span>Teller</span></span>
+      <svg viewBox="0 0 16 16" class="chev" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+    </button>
+    ${state.menu ? menu : ''}
+  </div>`
+}
+/* Choosing applies at once and keeps the menu open, so the teller sees the result and can try another. */
+function themePicker() {
+  const option = ([value, label]) =>
+    `<button class="theme-opt" role="menuitemradio" aria-checked="${state.theme === value}" data-theme-choice="${value}">
+      <span class="swatch ${value}" aria-hidden="true"></span>${label}
+    </button>`
+  const note = state.theme === 'system'
+    ? `Follows this computer: ${isDark() ? 'dark' : 'light'} now.`
+    : 'Kept on this computer for every teller.'
+  return `<div class="theme" role="group" aria-labelledby="theme-label">
+    <span class="label" id="theme-label">Theme</span>
+    <div class="theme-opts">${THEMES.map(option).join('')}</div>
+    <p class="theme-note">${note}</p>
+  </div>`
+}
+const isDark = () => state.theme === 'dark' || (state.theme === 'system' && $('#m-dark').checked)
+const MANILA = { timeZone: 'Asia/Manila' }
+function clockHtml(now = new Date()) {
+  const date = now.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', ...MANILA })
+  const time = now.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', second: '2-digit', ...MANILA })
+  return `<span class="muted">${date}</span><span class="clock-sep" aria-hidden="true"></span><time class="mono">${time}</time>`
+}
+// Only the clock changes every second, so typing is never interrupted by a re-render.
+setInterval(() => { const c = $('[data-clock]'); if (c) c.innerHTML = clockHtml() }, 1000)
+/* As built (Shift.tsx): network, waiting count, clock (when off), printer, OR numbers left; then the time. */
+function statusBar() {
+  const left = state.orEnd - state.orNext + 1
+  const net = state.online ? '<span class="chip ok">Online</span>' : '<span class="chip warn">Offline: work is saved and sent later</span>'
+  const sync = state.pending ? '<span>' + state.pending + ' waiting to sync</span>' : '<span>All synced</span>'
+  // Over 5 minutes off: a warning; over 30, "fix the time before taking payments" (and payments stop).
+  const clock = state.clockOff ? '<span class="chip warn">Clock 7 min off: ask IT to fix the time</span>' : ''
+  const printer = !state.printer ? '<span class="chip bad">Printer: none chosen (F11)</span>'
+    : state.paperOut ? '<span class="chip bad">Printer: out of paper</span>' : '<span class="chip ok">Printer ready</span>'
+  // Low: fewer than 5% of the series left.
+  const or = '<span class="' + (state.orLow ? 'chip warn' : '') + '">OR numbers left: <b class="mono">' + (state.orLow ? '38' : left.toLocaleString()) + '</b>' + (state.orLow ? ': tell head office' : '') + '</span>'
+  return '<footer class="status" role="status">' + net + sync + clock + printer + or + '<span class="sep"></span>' +
+    // The teller's name is in the account menu at the top, so the bar ends with the clock only.
+    '<span class="clock" data-clock aria-live="off">' + clockHtml() + '</span></footer>'
+}
+/* As built: on the Payment screen only, every reason payments cannot be taken, and a button to check for new settings now. */
+function blockers() {
+  if (state.screen !== 'pay') return ''
+  const reasons = []
+  if (state.stale) reasons.push('Sync required. This terminal has not received settings for more than 36 hours, so it cannot know the current fees. Connect to the network; payments resume as soon as settings arrive.')
+  if (state.closed) reasons.push('The day is closed on this terminal (Z-reading done). Payments resume tomorrow; reprints still work.')
+  if (!state.printer) reasons.push('No receipt printer is chosen for this terminal. Open Printer (F11) and choose the LX-310.')
+  if (!reasons.length) return ''
+  return `<div class="callout bad" role="alert" style="margin-bottom:14px"><b>Payments cannot be taken right now.</b>
+    <ul>${reasons.map((r) => `<li>${r}</li>`).join('')}</ul>
+    <div class="row"><button class="btn" data-act="check-settings">Check for new settings</button>${state.checkNote ? `<span class="small">${state.checkNote}</span>` : ''}</div></div>`
+}
+
+/* ---------------------------------------------------------------- first start */
+const errorCallout = (msg) => (msg ? `<div class="callout bad" role="alert">${msg}</div>` : '')
+function registerScreen() {
+  const r = state.reg || {}
+  if (r.done) return registeredScreen()
+  return `<div class="center"><div class="card sheet">${brand()}
+    <h1>Set up this computer</h1>
+    <p class="muted lead">An administrator created this terminal in the web console and gave you a one-time code.</p>
+    <div class="stack">
+      <div class="field"><label for="reg">One-time code</label>
+        <input id="reg" class="big regcode" placeholder="XXXX-XXXX-XXXX" value="${esc(r.code || '')}" maxlength="20" autocomplete="off"${r.err ? ' aria-invalid="true"' : ''}>
+        <span class="hint">12 letters and digits, with or without dashes. Valid for 24 hours, once.</span></div>
+      <details><summary>Server address</summary>
+        <div class="field"><label for="server" class="small">Head office server</label><input id="server" value="https://pos.tppa.example"></div></details>
+      ${errorCallout(r.err)}
+      <button class="btn primary big" data-act="register">Register this computer <kbd>Enter</kbd></button>
+      <p class="small muted">Try <span class="mono">${state.wasReset ? 'M4TW-8HQZ-2KDN' : 'K7QX-2M9P-4TRA'}</span>. A key is created on this computer and never leaves it.</p>
+    </div></div></div>`
+}
+/*
+ * As built: what was downloaded, then on to sign-in. After a reset or a new code the OR numbers
+ * continue from head office's last known one, so payments the old install never sent get their
+ * numbers again: the range notice names them (from previous-install.json, kept in the data
+ * folder when the files are set aside) until a teller ticks that head office was told.
+ */
+function registeredScreen() {
+  const fact = (term, value) => `<dt>${term}</dt><dd>${value}</dd>`
+  const prev = state.previous
+  const range = prev ? `OR ${prev.ors[0]}${prev.ors.length > 1 ? ` to ${prev.ors.at(-1)} (${prev.ors.length})` : ''}` : ''
+  return `<div class="center"><section class="card sheet">
+    <h1>Terminal 01 is ready</h1>
+    <p class="muted lead">Digos branch (0001).</p>
+    <div class="stack">
+      <dl class="facts" aria-label="Settings">
+        ${fact('Settings', `<span class="chip ok">Downloaded ${new Date().toLocaleString('en-PH')}</span>`)}
+        ${fact('Utilities', UTILITIES.map((u) => u.name).join(', '))}
+        ${fact('Fee versions', '2')}${fact('Receipt layout', `Version ${layoutInForce().version}`)}
+        ${fact('OR numbers', `<span class="mono">${state.wasReset && state.orNext > 1 ? `Continues at ${state.orNext.toLocaleString()}, ` : ''}1 to 1,000</span>`)}${fact('Staff', '6 who may sign in here')}
+      </dl>
+      ${prev ? `<div class="callout warn" role="alert"><b>${prev.ors.length === 1 ? 'Receipt' : 'Receipts'} ${range} ${prev.ors.length === 1 ? 'was' : 'were'} printed on this computer before the reset but never reached head office.</b>
+          Head office issues numbers again from <span class="mono">${orStr(state.orNext)}</span>: ${prev.ors.length === 1 ? 'that receipt' : 'those receipts'} may share a number with new ones. Tell head office, and keep the paper copies.</div>
+        <label class="check"><input type="checkbox" id="prev-told" data-act="prev-told"${prev.told ? ' checked' : ''}><span>I have told head office about ${range}</span></label>` : ''}
+      <button class="btn primary big" data-act="to-signin" id="go-signin"${prev && !prev.told ? ' disabled' : ''}>Continue to sign-in <kbd>Enter</kbd></button>
+      <button class="btn big" data-act="pull-now">Download settings now</button>
+      <p class="small muted">Server https://pos.tppa.example.</p>
+    </div></section></div>`
+}
+function doRegister() {
+  const code = ($('#reg').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  state.reg = { code: $('#reg').value }
+  if (code.length !== 12) state.reg.err = 'The code has 12 letters and digits. Check it and type it again.'
+  else if (code !== (state.wasReset ? 'M4TW8HQZ2KDN' : 'K7QX2M9P4TRA')) state.reg.err = 'This code is not valid or has expired. Ask the administrator for a new one.'
+  else state.reg = { done: true }
+  render()
+}
+
+/*
+ * What was never sent (as built, Outbox.unsent): the records that matter (payments and their
+ * tenders, voids, floats, day ends, kiosk cash) are counted; housekeeping (sign-ins and sign-outs,
+ * settings confirmations, printer offsets) is counted apart, as nothing to report.
+ * Mock-up: 6 records, 3 of them payments; or only 2 sign-in records.
+ */
+const UNSENT_RECORDS = 6, UNSENT_HOUSEKEEPING = 2
+const unsentOrs = () => [orStr(state.orNext - 3), orStr(state.orNext - 2), orStr(state.orNext - 1)]
+const records = (n) => n + ' record' + (n === 1 ? '' : 's')
+const orRange = (ors) => ors[0] + (ors.length > 1 ? ' to ' + ors.at(-1) : '')
+const housekeepingNote = (n) => (n ? ` <span class="small">(${n} sign-in or settings record${n === 1 ? '' : 's'} not sent: nothing to report.)</span>` : '')
+/* Head office reset the registration (same computer, Windows reinstalled): the old key is refused,
+ * everyone is signed out and nothing more can be recorded here. Unsent records are set aside, never deleted. */
+function resetScreen() {
+  const unsent = state.unsentAtReset ? UNSENT_RECORDS : 0
+  const ors = unsentOrs()
+  const when = new Date(Date.now() - 20 * 60_000).toLocaleString('en-PH')
+  return `<div class="center"><div class="card sheet">${brand()}
+    <h1>This terminal was reset</h1>
+    <p class="muted lead">Head office reset the registration of Terminal 01 on ${when}. Everyone has been signed out and this computer cannot take payments.</p>
+    <div class="stack">
+      ${unsent
+        ? `<div class="callout bad"><b>${records(unsent)} on this computer ${unsent === 1 ? 'was' : 'were'} never sent to head office</b>, including ${plural(ors.length, 'payment')} (${orRange(ors)}).
+            They are kept in a separate file on this computer. Keep the paper receipts and call head office before you set it up again.</div>
+           <label class="check"><input type="checkbox" id="told" data-act="told"${state.told ? ' checked' : ''}><span>I have told head office about the ${records(unsent)}</span></label>`
+        : `<div class="callout ok">Everything that matters was sent to head office before the reset. Nothing was lost.${housekeepingNote(UNSENT_HOUSEKEEPING)}</div>`}
+      <button class="btn primary big" data-act="setup-again" id="setup-again"${unsent && !state.told ? ' disabled' : ''}>Set up this computer again</button>
+      <p class="small muted">You need the new one-time code from the administrator. This terminal keeps its number, BIR permit and OR series.</p>
+    </div></div></div>`
+}
+
+/* The server answers but does not know this computer (its database was replaced, or this is
+ * the wrong server): shown once it lasts 5 minutes (N2). Payments stop: they could never be
+ * sent. IT sets it up again with a new one-time code, which proves head office allowed it (N3). */
+function notRecognisedScreen() {
+  const nr = state.nr, unsent = state.unsentAtReset ? UNSENT_RECORDS : 0
+  const ors = unsentOrs()
+  const fact = (term, value) => `<dt>${term}</dt><dd>${value}</dd>`
+  const why = nr.reason === 'terminal'
+    ? 'The server at https://pos.tppa.example has no terminal 01. It may be the wrong server, or its database was replaced.'
+    : nr.reason === 'key'
+      ? 'The server knows terminal 01, but not the key of this computer. The terminal may have been set up on another computer.'
+      // A server from before N1 does not say whether it is the terminal or the key.
+      : 'The server at https://pos.tppa.example does not recognise this computer.'
+  const code = nr.code || ''
+  return `<div class="center"><div class="card sheet wide">${brand()}
+    <h1>The server does not recognise this computer</h1>
+    <p class="muted lead">${why} Payments are stopped here: they could not reach head office.</p>
+    <div class="nr-cols"><div class="stack">
+      <dl class="facts" aria-label="This computer">
+        ${fact('Server', '<span class="mono">https://pos.tppa.example</span>')}
+        ${fact('Terminal', '01, Digos branch (0001)')}
+        ${fact('Terminal ID', '<span class="mono">6f1c8a52-3c1e-4c55-9a43-2d7f0c1b9e10</span>')}
+        ${fact('Device key', '<span class="mono">9f3a41c0...b81d</span>')}
+        ${fact('Last synced', new Date(Date.now() - 26 * 3_600_000).toLocaleString('en-PH'))}
+        ${fact('Not sent', unsent ? `<b>${records(unsent)} (OR ${orRange(ors)})</b>` : `Nothing that matters${housekeepingNote(UNSENT_HOUSEKEEPING)}`)}
+      </dl>
+      <details><summary>For IT: what to check</summary>
+        <ol class="small" style="margin:8px 0 0;padding-left:20px;line-height:1.6">
+          <li>Is the server address right (not a test server)?</li>
+          <li>In the console, Terminals: find terminal 01 and compare its device key with the one above.</li>
+          <li>If it is the right server and the terminal is there with this key, call IT support: the server should know it.</li>
+          <li>Otherwise get a new one-time code: <b>Reset registration</b> on the terminal, <b>Issue new code</b> if it waits for setup, or a new terminal if it is not there.</li>
+          <li>Enter the code here. This computer's records are kept in a separate file; nothing is deleted.</li>
+        </ol></details>
+    </div><div class="stack">
+      <div class="field"><label for="nrcode">New one-time code</label>
+        <input id="nrcode" class="big regcode" placeholder="XXXX-XXXX-XXXX" value="${esc(code)}" maxlength="20" autocomplete="off"${nr.err ? ' aria-invalid="true"' : ''}></div>
+      <details><summary>Server address</summary>
+        <div class="field"><label for="nrserver" class="small">Head office server</label><input id="nrserver" value="https://pos.tppa.example"></div></details>
+      ${unsent ? `<div class="callout bad"><b>${records(unsent)} here never reached head office.</b> Keep the paper receipts and tell head office.</div>
+        <label class="check"><input type="checkbox" id="told" data-act="told"${state.told ? ' checked' : ''}><span>I have told head office about the ${records(unsent)}</span></label>` : ''}
+      ${errorCallout(nr.err)}
+      ${nr.retry ? `<div class="callout bad" role="status">${nr.retry}</div>` : ''}
+      <button class="btn primary big" data-act="nr-setup" id="nr-setup"${!code.trim() || (unsent && !state.told) ? ' disabled' : ''}>Set up with this code</button>
+      <button class="btn big" data-act="nr-retry">Try again now</button>
+      <p class="small muted">The code is checked with the server first: a wrong one changes nothing here. The app also keeps trying on its own and comes back if the server recognises it again.</p>
+      <p class="small muted">Mock-up: try <span class="mono">M4TW-8HQZ-2KDN</span>.</p>
+    </div></div></div></div>`
+}
+/* The server's own words for each reason (a refused retry shows "Still not recognised: ..."). */
+const NR_MESSAGE = {
+  terminal: 'The server has no record of this terminal: it may be the wrong server, or its database was replaced. Ask IT.',
+  key: "The server knows this terminal, but not this computer's key. Ask IT.",
+  unknown: 'The server does not recognise this computer. Ask IT to check its registration.',
+}
+function doNrSetup() {
+  const code = ($('#nrcode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  state.nr.code = $('#nrcode').value
+  if (!code || (state.unsentAtReset && !state.told)) return
+  state.nr.retry = null
+  if (code.length !== 12) { state.nr.err = 'The code has 12 letters and digits. Check it and type it again.'; return render() }
+  if (code !== 'M4TW8HQZ2KDN') { state.nr.err = 'This code is not valid or has expired. Ask the administrator for a new one. Nothing was changed on this computer.'; return render() }
+  // Registered with a fresh key first; only then the old files are set aside (the unsent OR
+  // numbers noted first, for the fresh install's range notice).
+  if (state.unsentAtReset) { state.previous = { ors: unsentOrs(), told: false }; state.orNext -= 3 }
+  state.wasReset = true; state.nr = null; state.reg = { done: true }; state.screen = 'register'; render()
+}
+
+/* ---------------------------------------------------------------- sign-in and lock */
+function signInScreen() {
+  const s = state.signin || {}
+  return `<div class="center"><div class="card sheet">${brand(TERMINAL, onlineChip())}
+    <h1>Sign in</h1>
+    <p class="muted lead">Use your own username and password.</p>
+    <div class="stack">
+      <div class="field"><label for="u">Username</label><input id="u" value="${esc(s.u || '')}" autocomplete="username"></div>
+      <div class="field"><label for="p">Password</label><input id="p" type="password" autocomplete="current-password"></div>
+      ${errorCallout(s.err)}
+      <button class="btn primary big" data-act="signin">Sign in <kbd>Enter</kbd></button>
+      ${state.online ? '' : '<p class="small muted">Offline sign-in works for people who signed in online on this terminal in the last 36 hours.</p>'}
+    </div></div></div>`
+}
+function doSignIn() {
+  const u = $('#u').value.trim().toLowerCase(), p = $('#p').value
+  state.signin = { u }
+  if (!u || !p) { state.signin.err = 'Enter your username and password.'; return render() }
+  const people = { areyes: { name: 'Ana Reyes', recent: true }, bsantos: { name: 'Ben Santos', recent: false } }
+  const who = people[u]
+  // Offline (auth.ts): only someone who signed in online here within the offline window.
+  if (!state.online && !who) {
+    state.signin.err = 'The server cannot be reached, and you have not signed in online on this terminal before. Connect to the network and sign in once, or ask a colleague who has.'
+    return render()
+  }
+  if (!who) { state.signin.err = 'Wrong username or password.'; return render() }
+  if (!state.online && !who.recent) {
+    state.signin.err = 'Your last online sign-in on this terminal was more than 36 hours ago. Connect to the network and sign in online once.'
+    return render()
+  }
+  state.teller = { ...who, username: u }; state.signin = null; state.screen = 'pay'; render()
+}
+function lockScreen() {
+  const s = state.lock || {}
+  return `<div class="center"><div class="card sheet">${brand()}
+    <h1>Locked</h1>
+    <p class="muted lead">${esc(state.teller?.name || '')} &middot; shift open since ${state.shiftStart}. Nothing was lost.</p>
+    <div class="stack">
+      <div class="field"><label for="lp">Password to unlock</label><input id="lp" type="password"></div>
+      ${errorCallout(s.err)}
+      <button class="btn primary big" data-act="unlock">Unlock <kbd>Enter</kbd></button>
+    </div></div></div>`
+}
+
+/* ---------------------------------------------------------------- payment flow */
+const STEPS = [['account', 'Account'], ['amount', 'Amount due'], ['tender', 'Payment'], ['confirm', 'Print']]
+function stepsBar() {
+  const at = STEPS.findIndex(([k]) => k === state.step)
+  return '<div class="steps" aria-label="Steps">' + STEPS.map(([k, l], i) => '<span class="' + (i < at ? 'done' : i === at ? 'on' : '') + '">' + (i + 1) + '. ' + l + '</span>').join('') + '</div>'
+}
+function payScreen() {
+  if (state.printed) return printedPanel()
+  if (state.floatNeeded && !state.closed) return floatCard()
+  const panel = { account: accountPanel, amount: amountPanel, tender: tenderPanel, confirm: confirmPanel }[state.step]()
+  return '<div class="pos"><section class="flow">' + stepsBar() + reprintNoticeHtml() + panel + '</section>' + moneyPanel() + '</div>'
+}
+function accountPanel() {
+  const d = state.draft, k = known[d.digits]
+  const n = state.accounts.length + 1
+  const single = branchUtilities().length === 1
+  return '<div class="sheet panel"><div class="lead"><h2>' + (n > 1 ? 'Account ' + n : 'Account') + '</h2>' + (single ? utilityPicker() : '') + '</div>' +
+    (single ? '' : utilityPicker()) +
+    '<div class="grid2"><div class="field"><label for="acct">Account ID</label><input id="acct" class="big" inputmode="numeric" placeholder="###-####-####" value="' + maskAcct(d.digits) + '" autocomplete="off"' + (d.err ? ' aria-invalid="true"' : '') + '>' +
+    (d.err ? '<span class="err">' + d.err + '</span>' : '<span class="hint">11 digits from the bill. Dashes are added for you.</span>') + '</div>' +
+    '<div class="field"><label for="payee">Customer name</label><input id="payee" value="' + esc(d.name) + '" autocomplete="off">' +
+    '<span class="hint">' + (k && d.name === k.name ? 'Filled from an earlier payment. Check it against the bill.' : 'As printed on the bill.') + '</span></div></div>' +
+    (k && k.paidToday ? '<div class="callout warn paidtoday"><b>Already paid today</b> for this account (' + k.paidToday + '). Ask the customer before taking a second payment.</div>' : '') +
+    '<div class="actions"><button class="btn primary big" data-act="acct-next">Next: amount <kbd>Enter</kbd></button>' +
+    (state.accounts.length ? '<button class="btn big" data-act="to-tender">Done adding: payment <kbd>F4</kbd></button>' : '') + '</div>' +
+    '<p class="small muted" style="margin-top:12px">Try <span class="mono">123-4567-8901</span> (paid earlier today) or <span class="mono">204-0123-4567</span>.</p></div>'
+}
+/*
+ * Which utility the bill is from (as built):
+ * - one utility at the branch: shown next to the title, nothing to choose;
+ * - several: the chosen one, folded, with Change. Change unfolds one tile each (a radio group:
+ *   arrow keys move); choosing folds it again and puts the cursor back in Account ID.
+ * Each new customer starts again with the terminal's default.
+ */
+function utilityPicker() {
+  const list = branchUtilities(), current = utilityOf(state.utility)
+  const code = (u) => `<span class="util-code">${u.code}</span>`
+  if (list.length === 1) return `<div class="utility-fixed" aria-label="Utility">${code(current)}${current.name}</div>`
+  if (!state.pickerOpen) {
+    return `<div class="field"><span class="label" id="utility-label">Utility</span>
+      <button type="button" class="utility on chosen" data-act="picker-open" aria-expanded="false" aria-describedby="utility-label">
+        ${code(current)}<span class="util-name">${current.name}</span>
+        <span class="util-change">Change<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></span>
+      </button></div>`
+  }
+  const tile = (u) => {
+    const on = u.code === state.utility
+    return `<button type="button" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" class="utility ${on ? 'on' : ''}" data-utility="${u.code}">
+      ${code(u)}<span class="util-name">${u.name}</span>
+      <svg viewBox="0 0 16 16" class="tick" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7"/></svg>
+    </button>`
+  }
+  return `<div class="field"><span class="label" id="utility-label">Utility</span>
+    <div class="utilities" role="radiogroup" aria-labelledby="utility-label" style="grid-template-columns:repeat(${list.length},minmax(0,1fr))">${list.map(tile).join('')}</div></div>`
+}
+function chooseUtility(code) {
+  readDraft(); state.utility = code; state.pickerOpen = false; render(); $('#acct')?.focus()
+}
+function amountPanel() {
+  const d = state.draft, a = parseAmt(d.amount)
+  return '<div class="sheet panel"><div class="lead"><h2>Amount due</h2><span class="muted mono">' + maskAcct(d.digits) + ' &middot; ' + esc(d.name) + '</span></div>' +
+    '<div class="field"><label for="amt">Bill amount (' + PESO + ')</label><input id="amt" class="big" inputmode="decimal" placeholder="0.00" value="' + esc(d.amount) + '"' + (d.err ? ' aria-invalid="true"' : '') + '>' +
+    (d.err ? '<span class="err">' + d.err + '</span>' : '<span class="hint">The amount the customer is paying on this bill.</span>') + '</div>' +
+    '<div class="callout info" style="margin-top:12px">Service fee ' + fmt(FEE) + ' per account, VAT included (set by head office; it cannot be changed here).' + (a ? ' This account: <b class="mono">' + fmt(a + FEE) + '</b>.' : '') + '</div>' +
+    '<div class="actions"><button class="btn primary big" data-act="amt-done">Add and go to payment <kbd>Enter</kbd></button>' +
+    '<button class="btn big add" data-act="amt-another"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>Add another account <kbd>F3</kbd></button>' +
+    '<button class="btn big" data-act="back">Back <kbd>Esc</kbd></button></div></div>'
+}
+function tenderPanel() {
+  const t = totals()
+  const tab = (m, l, key) => '<button class="btn big ' + (state.method === m ? 'on' : '') + '" data-method="' + m + '">' + l + ' <kbd>' + key + '</kbd></button>'
+  let body = ''
+  if (state.method === 'CASH') {
+    // Starts at the exact amount due, and follows it until the teller changes it.
+    if (state.receivedAuto && t.due > 0) { state.received = t.due; state.receivedText = (t.due / 100).toFixed(2) }
+    body = '<div class="field"><label for="recv">Amount received (' + PESO + ')</label><input id="recv" class="big" inputmode="decimal" placeholder="0.00" value="' + esc(state.receivedText) + '"></div>' +
+      '<div class="quick">' + [20, 50, 100, 200, 500, 1000].map((b) => '<button class="btn" data-add="' + b * 100 + '">+' + b.toLocaleString() + '</button>').join('') +
+      '<button class="btn" data-act="exact">Exact</button></div>' +
+      '<p class="small muted" style="margin-top:8px">Starts at the amount due: Enter if the customer pays it exactly. Type over it, or use the bill buttons (the first replaces it, the next ones add).</p>'
+  } else if (state.method === 'CHEQUE') {
+    const c = state.cheque, e = chequeErrors()
+    const f = (id, label, value, err, extra = '') => '<div class="field"><label for="' + id + '">' + label + '</label><input id="' + id + '" value="' + esc(value) + '"' + (err ? ' aria-invalid="true"' : '') + extra + '>' + (err ? '<span class="err">' + err + '</span>' : '') + '</div>'
+    body = '<div class="grid2">' + f('cq-no', 'Cheque number', c.no, e.no, ' inputmode="numeric"') + f('cq-date', 'Cheque date', c.date, e.date, ' type="date"') +
+      f('cq-bank', 'Bank', c.bank, e.bank) +
+      '<div class="field"><label for="cq-type">Type</label><select id="cq-type">' + [['LOCAL', 'Local'], ['REGIONAL', 'Regional'], ['ON_US', 'On-us'], ['MANAGERS_CHECK', 'Manager\'s check']].map(([v, l]) => '<option value="' + v + '"' + (c.type === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div></div>' +
+      '<div class="callout info" style="margin-top:12px">The cheque must be for exactly <b class="mono">' + fmt(t.due) + '</b>. No change is given on cheques. Accepted up to 180 days old, not post-dated.</div>'
+  } else {
+    body = '<div class="field"><label for="dref">Card or approval reference</label><input id="dref" class="big" value="' + esc(state.debitRef) + '"></div>' +
+      '<p class="small muted" style="margin-top:8px">The full amount <b class="mono">' + fmt(t.due) + '</b> is charged on the card terminal.</p>'
+  }
+  return '<div class="sheet panel"><div class="lead"><h2>Payment</h2><span class="muted">' + state.accounts.length + ' account' + (state.accounts.length > 1 ? 's' : '') + '</span></div>' +
+    '<div class="tabs">' + tab('CASH', 'Cash', 'F5') + tab('CHEQUE', 'Cheque', 'F6') + tab('DEBIT', 'Debit', 'F8') + '</div>' + body +
+    '<div class="actions"><button class="btn primary big" data-act="to-confirm"' + (tenderReady() ? '' : ' disabled') + '>Check and print <kbd>Enter</kbd></button>' +
+    '<button class="btn big add" data-act="add-more"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>Add another account <kbd>F3</kbd></button>' +
+    '<button class="btn big" data-act="back">Back <kbd>Esc</kbd></button></div></div>'
+}
+function chequeErrors() {
+  const c = state.cheque, e = {}
+  if (state.cheque.touched) {
+    if (!/^\d{1,20}$/.test(c.no)) e.no = 'Digits only, as printed on the cheque.'
+    if (!c.bank.trim()) e.bank = 'Enter the bank.'
+  }
+  if (c.date) {
+    const days = Math.round((new Date('2026-11-05') - new Date(c.date)) / 86400000)
+    if (days < 0) e.date = 'Post-dated cheques are not accepted.'
+    else if (days > 180) e.date = 'Older than 180 days (stale): not accepted.'
+  } else if (state.cheque.touched) e.date = 'Enter the date on the cheque.'
+  return e
+}
+function tenderReady() {
+  if (state.stale || state.closed) return false
+  const t = totals()
+  if (state.method === 'CASH') return state.received >= t.due && t.due > 0
+  if (state.method === 'CHEQUE') { const c = state.cheque; return c.no && c.bank.trim() && c.date && !Object.keys(chequeErrors()).length }
+  return state.debitRef.trim().length >= 4
+}
+/*
+ * The on-screen preview of one receipt, as the app's ReceiptText: one copy per receipt. The
+ * printed form (two copies, office and customer's, no utility line) comes from the receipt
+ * layout in the console; this is only for checking the figures before printing.
+ */
+const peso2 = (c) => (c / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const txnNumber = (seq) => '01' + String(seq).padStart(8, '0')
+function receiptText(a, i, n) {
+  const row = (label, value) => label.padEnd(18) + String(value).padStart(14)
+  const when = new Date().toLocaleString('en-PH', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', ...MANILA })
+  const isLast = i === n - 1
+  const tender = isLast && state.method === 'CASH' ? row('Received', peso2(state.received)) + '\n' + row('Change', peso2(totals().change))
+    : isLast ? row('Paid by', state.method === 'CHEQUE' ? 'Cheque' : 'Debit')
+    : `Tender  ${i + 1} of ${n}`
+  return [
+    `OR No.  <b>${orStr(state.orNext + i)}</b>`, `Date    ${when}`, '',
+    `Account ${maskAcct(a.digits)}`, `Name    ${esc(a.name)}`, `Biller  ${utilityOf(a.utility).name}`, '',
+    row('Collection', peso2(a.amount)), row('VATable sales', peso2(FEE_VATABLE)), row('VAT', peso2(FEE_VAT)),
+    `<b>${row('TOTAL', peso2(a.amount + FEE))}</b>`, tender, '',
+    `Txn     ${txnNumber(state.txn + i)}`,
+  ].join('\n')
+}
+/* Start of day (PR #29): the change fund in the drawer, before the first payment. The text is the
+ * app's (Pay.tsx): kiosk credits refunded also come out of the drawer, so it says so. */
+function floatCard() {
+  return `<form class="sheet panel float-card" data-float-form aria-labelledby="float-title">
+    <h2 id="float-title">Start of day: opening float</h2>
+    <p class="muted">Count the change fund in the drawer before the first payment. At the day end the drawer should hold this plus the cash you take, less any kiosk credits refunded. Enter 0 if there is none.</p>
+    <div class="field"><label for="float">Opening float (${PESO})</label><input id="float" class="big mono" inputmode="decimal" value="${esc(state.floatText)}"></div>
+    ${errorCallout(state.floatErr)}
+    <div class="actions"><button class="btn primary big" type="submit">Record float <kbd>Enter</kbd></button></div>
+    <p class="small muted">A correction later needs the branch manager.</p>
+  </form>`
+}
+function recordFloat() {
+  state.floatText = $('#float').value
+  const value = parseAmt(state.floatText)
+  if (value === null) { state.floatErr = 'Enter the float, for example 2000.00, or 0 if there is none.'; return render() }
+  Object.assign(state, { float: value, floatNeeded: false, floatErr: null }); state.pending++; render()
+}
+function nowTime() { return new Date().toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) }
+function confirmPanel() {
+  const n = state.accounts.length
+  return '<div class="sheet panel"><div class="lead"><h2>Check and print</h2><span class="muted">' + plural(n, 'receipt') + '</span></div>' +
+    '<div class="receipts">' + state.accounts.map((a, i) => '<div class="receipt" aria-label="Receipt ' + (i + 1) + '">' + receiptText(a, i, n) + '</div>').join('') + '</div>' +
+    errorCallout(state.payErr) +
+    '<div class="actions"><button class="btn primary big" data-act="print">Print ' + (n > 1 ? n + ' receipts' : 'receipt') + ' <kbd>Enter</kbd></button>' +
+    '<button class="btn big" data-act="back">Back <kbd>Esc</kbd></button></div>' +
+    '<p class="small muted" style="margin-top:10px">Load the official receipt forms first. Each account gets its own OR; the change is on the last one.</p></div>'
+}
+function moneyPanel() {
+  const t = totals(), done = state.step === 'confirm' || state.step === 'tender'
+  const rows = state.accounts.map((a, i) => '<div class="acct"><div class="l1"><span class="mono">' + maskAcct(a.digits) + '</span><span class="amount">' + fmt(a.amount + FEE) + '</span></div>' +
+    '<div class="l2"><span>' + esc(a.name) + '</span><span>bill ' + fmt(a.amount) + ' + fee ' + fmt(FEE) + '</span></div>' +
+    (state.step !== 'confirm' ? '<button class="btn ghost" style="min-height:32px;padding:0 6px;font-size:13px" data-remove="' + i + '">Remove</button>' : '') + '</div>').join('')
+  let change
+  if (!t.due || state.method !== 'CASH' || !done) change = '<div class="change none"><div class="lbl">Change</div><div class="val">-</div></div>'
+  else if (t.change < 0) change = '<div class="change short" aria-live="polite"><div class="lbl">Short by</div><div class="val">' + fmt(-t.change) + '</div></div>'
+  else change = '<div class="change" aria-live="polite"><div class="lbl">Change</div><div class="val">' + fmt(t.change) + '</div></div>'
+  return '<aside class="sheet money" aria-label="Money summary"><h3>This customer</h3>' + (rows || '<p class="empty">No accounts yet. Start with the account ID from the bill.</p>') +
+    '<div class="line"><span>Bills</span><span class="amount">' + fmt(state.accounts.reduce((s, a) => s + a.amount, 0)) + '</span></div>' +
+    '<div class="line"><span>Service fees</span><span class="amount">' + fmt(state.accounts.length * FEE) + '</span></div>' +
+    '<div class="line total"><span>Total due</span><span class="amount">' + fmt(t.due) + '</span></div>' +
+    (state.method === 'CASH' && done ? '<div class="line"><span>Received</span><span class="amount">' + fmt(state.received) + '</span></div>' : '') +
+    '<div style="flex:1;min-height:14px"></div>' + change + '</aside>'
+}
+/* After the payment (as built): printed, or printing stopped and how to fix it. */
+function printedPanel() {
+  const p = state.printed
+  const change = p.method === 'CASH'
+    ? `<div class="change"><div class="lbl">Give change</div><div class="val">${fmt(p.change)}</div></div>`
+    : `<div class="callout info">Paid by ${p.method === 'CHEQUE' ? 'cheque' : 'debit'}. No change.</div>`
+  const actions = p.error
+    ? '<button class="btn primary big" data-act="reprint-now">Reprint <kbd>F9</kbd></button><button class="btn big" data-act="next">Next customer</button>'
+    : '<button class="btn primary big" data-act="next">Next customer <kbd>Enter</kbd></button><button class="btn big" data-act="reprint-panel">Reprint <kbd>F9</kbd></button>'
+  return `<section class="sheet panel printed" style="max-width:760px;display:flex;flex-direction:column;gap:14px">
+    <h2>${p.error ? 'Printing stopped' : 'Printed'}</h2>
+    <p class="muted mono">${p.ors.join(', ')}</p>
+    ${p.error ? `<div class="callout bad" role="alert"><b>Printer is out of paper. Load forms, then press F9 to reprint ${orList(p.ors)}.</b> The payment is saved; the number is not lost.</div>` : ''}
+    ${change}
+    <div class="actions" style="margin-top:0">${actions}</div>
+    <p class="small muted">${savedNote()} A reprint is marked REPRINTED on the receipt.</p>
+  </section>`
+}
+/* As built: "sent" only once nothing waits (the app asks the sync status every 2 s). */
+const savedNote = () => (!state.online
+  ? 'Saved on this computer; it will be sent when the network is back.'
+  : state.pending ? 'Saved on this computer; sending to head office.' : 'Saved on this computer and sent to head office.')
+/* As the app's printing service names them: "OR 0001-01-00000126" or "ORs ... to ...". */
+const orList = (ors) => (ors.length > 1 ? `ORs ${ors[0]} to ${ors.at(-1)}` : `OR ${ors[0]}`)
+/*
+ * A reprint away from the Printed panel (Today's Reprint, or F9 on Payment or Today), as built:
+ * the receipts printed again, or what to fix. A voided OR is never printed again.
+ */
+function reprintOrs(ors) {
+  if (!ors.length) { state.reprintNotice = { ok: false, text: 'No receipt has been printed here yet.' }; return }
+  const live = ors.filter((or) => state.today.find((t) => t.or === or)?.status === 'VALID')
+  if (!live.length) {
+    state.reprintNotice = { ok: false, text: ors.length > 1 ? 'These receipts are voided; a voided OR is not printed again.' : 'This OR is voided; a voided OR is not printed again.' }
+    return
+  }
+  if (state.paperOut) { state.reprintNotice = { ok: false, text: `Printer is out of paper. Load forms, then press F9 to print ${orList(live)}.` }; return }
+  live.forEach((or) => { state.today.find((t) => t.or === or).reprints++; state.pending++ })
+  state.reprintNotice = { ok: true, text: `Reprinted ${live.join(', ')}, marked REPRINTED.` }
+}
+const reprintNoticeHtml = () => (state.reprintNotice ? `<div class="callout ${state.reprintNotice.ok ? 'ok' : 'bad'}" role="status">${state.reprintNotice.text}</div>` : '')
+
+/* ---------------------------------------------------------------- today and day end */
+const METHOD = { CASH: 'Cash', CHEQUE: 'Cheque', DEBIT: 'Debit' }
+/*
+ * Kiosk credits head office knows (K5d, as built). A credit slip is refunded once, at any TPPA
+ * counter, online only: the code is checked and marked refunded by head office in one step.
+ */
+const CREDITS = {
+  'KC-7F3Q-9MXD': { amount: 70000, kiosk: 'Kiosk 01, SM Lanang (Digos 0001)', issued: new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', ...MANILA }) + ', 10:05 AM', reason: 'The customer left before the total was in', refunded: null },
+  'KC-H2RW-4TZP': { amount: 15000, kiosk: 'Kiosk 02, Gaisano (Davao 0003)', issued: 'Nov 6, 4:41 PM', reason: 'Payments stopped (power cut or fault) with cash in', refunded: null },
+  'KC-AAAA-BBBB': { amount: 50000, kiosk: 'Kiosk 01, SM Lanang (Digos 0001)', issued: 'Nov 5, 2:12 PM', reason: 'The customer left before the total was in', refunded: 'Nov 5, 3:30 PM at Digos 0001, counter 02, by Ben Santos (approved by Marisol Garcia)' },
+}
+state.refunds = []
+state.refundNotice = null
+/* Typed or scanned: upper case, the dashes put in, anything else dropped. */
+function creditCode(raw) {
+  const c = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^KC/, '').slice(0, 8)
+  return 'KC-' + c.slice(0, 4) + (c.length > 4 ? '-' + c.slice(4) : '')
+}
+const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's')
+/* Today (as built, PR #43): four numbers, then one row per receipt, newest first. */
+function todayScreen() {
+  const valid = state.today.filter((t) => t.status === 'VALID')
+  const stat = (label, value, strong) => `<div class="stat ${strong ? 'strong' : ''}"><div class="lbl">${label}</div><div class="val">${value}</div></div>`
+  const rows = state.today.map((t, i) => todayRow(t, i)).reverse().join('')
+  return `<section class="page">
+    <header class="page-head"><div class="title-row"><h1>Today</h1><button class="btn" data-act="refund-open">Refund a kiosk credit</button></div>
+      <p class="muted lead">Receipts from this terminal today. Reprints are marked REPRINTED on the receipt; a void needs the branch manager.</p></header>
+    <div class="stats" aria-label="Today in numbers">
+      ${stat('Payments', valid.length)}
+      ${stat('Collected', fmt(valid.reduce((s, t) => s + t.amount + t.fee, 0)), true)}
+      ${stat('Voided', state.today.length - valid.length)}
+      ${stat('Reprints', state.today.reduce((s, t) => s + t.reprints, 0))}
+    </div>
+    ${state.voidNotice ? `<div class="callout ok" role="status">${state.voidNotice}</div>` : ''}
+    ${state.refundNotice ? `<div class="callout ok" role="status">${state.refundNotice}</div>` : ''}
+    ${reprintNoticeHtml()}
+    <div class="sheet today"><table>
+      <thead><tr><th>OR and time</th><th>Customer</th><th>Paid by</th><th class="num">Total</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`
+}
+function todayRow(t, i) {
+  const isValid = t.status === 'VALID'
+  const reprints = t.reprints
+    ? `<span class="reprints" title="Reprinted ${plural(t.reprints, 'time')}">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6V2.5h7V6M4.5 11.5h-2v-5h11v5h-2M4.5 9.5h7v4h-7z"/></svg>
+        <span class="sr-only">Reprinted </span>${t.reprints}<span class="sr-only"> ${t.reprints === 1 ? 'time' : 'times'}</span></span>`
+    : ''
+  const actions = isValid
+    ? `<button class="btn" data-reprint="${i}" aria-label="Reprint OR ${t.or}">Reprint</button>
+       <button class="btn danger-outline" data-void="${i}" aria-label="Void OR ${t.or}">Void</button>`
+    : ''
+  return `<tr class="${isValid ? '' : 'voided'}">
+    <td><div class="mono or">${t.or}</div><div class="small muted">${t.time}</div></td>
+    <td><div class="payee">${esc(t.name)}</div><div class="small muted mono">${maskAcct(t.acct)}</div></td>
+    <td><span class="tag">${METHOD[t.method]}</span></td>
+    <td class="num mono amount">${fmt(t.amount + t.fee)}</td>
+    <td><div class="status-cell">${isValid ? '<span class="chip ok">Valid</span>' : '<span class="chip bad">Voided</span>'}${reprints}</div>
+      ${t.voidReason ? `<div class="small muted">${esc(t.voidReason)}</div>` : ''}</td>
+    <td><div class="row-actions">${actions}</div></td>
+  </tr>`
+}
+/*
+ * Day end (as built, PR #43): count the drawer, check the figures, close the day. Closing does
+ * not print; the closed day has "Print Z-reading", as often as needed. Works offline.
+ */
+const BILLS = [100000, 50000, 20000, 10000, 5000, 2000], COINS = [1000, 500, 100, 25]
+const DENOMS = [...BILLS, ...COINS]
+const countOf = (d) => Number(state.count[d]) || 0
+const longDate = () => new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', ...MANILA })
+const smallLine = (label, value) => `<div class="line small-line"><span>${label}</span><span class="mono">${value}</span></div>`
+/*
+ * A branch manager's approval (void, float correction, cash difference), with the app's rules
+ * (packages/terminal-core/src/day.ts): the right password, a branch manager, and never the
+ * person asking. A kiosk credit refund is checked by head office, in its own words (and the
+ * manager must be of this branch).
+ */
+const STAFF = {
+  areyes: { name: 'Ana Reyes', role: 'TELLER' },
+  bsantos: { name: 'Ben Santos', role: 'TELLER' },
+  mgarcia: { name: 'Marisol Garcia', role: 'BRANCH_MANAGER' },
+}
+state.managerName = {}
+function managerFields(prefix, layout = 'grid2') {
+  const username = esc(state.managerName[prefix] || '')
+  return `<div class="${layout}">
+    <div class="field"><label for="${prefix}-manager">Manager username</label><input id="${prefix}-manager" autocomplete="off" value="${username}"></div>
+    <div class="field"><label for="${prefix}-password">Manager password</label><input id="${prefix}-password" type="password" autocomplete="off"></div>
+  </div>`
+}
+function checkManager(prefix, what) {
+  const username = ($(`#${prefix}-manager`)?.value || '').trim().toLowerCase(), password = $(`#${prefix}-password`)?.value || ''
+  state.managerName[prefix] = username
+  const refuse = (message) => ({ ok: false, message })
+  if (!username || !password) return refuse("Enter the branch manager's username and password.")
+  const person = STAFF[username]
+  if (!person || password === 'wrong') return refuse('Wrong username or password.')
+  if (username === state.teller?.username) return refuse(`A different person must approve ${what}: the branch manager signs with their own password.`)
+  if (person.role !== 'BRANCH_MANAGER') return refuse(`${person.name} is not a branch manager${what === 'a refund' ? ' of this branch' : ''}. Only a branch manager can approve ${what}.`)
+  state.managerName[prefix] = ''
+  return { ok: true, name: person.name }
+}
+/* After a refused approval: the password is cleared (as in the app) and takes the focus. */
+const focusPassword = (prefix) => $(state.managerName[prefix] ? `#${prefix}-password` : `#${prefix}-manager`)?.focus()
+function dayTotals() {
+  const valid = state.today.filter((t) => t.status === 'VALID')
+  const sum = (list) => list.reduce((s, t) => s + t.amount + t.fee, 0)
+  const cash = valid.filter((t) => t.method === 'CASH')
+  const refunded = state.refunds.reduce((s, x) => s + x.amount, 0)
+  const expected = state.float + sum(cash) + (state.carried?.cash ?? 0) - refunded
+  const counted = DENOMS.reduce((s, d) => s + d * countOf(d), 0)
+  const anyCount = DENOMS.some((d) => (state.count[d] ?? '') !== '')
+  return { valid, sum, expected, counted, diff: counted - expected, anyCount }
+}
+function figures() {
+  const { valid, sum } = dayTotals(), all = state.today, voided = all.filter((t) => t.status !== 'VALID')
+  // After a reset the same day, head office's figures come first (the lower ORs).
+  const c = state.carried ?? { count: 0, cash: 0, cashCount: 0, voided: 0, voidCount: 0, reprints: 0 }
+  const by = (m) => { const list = valid.filter((t) => t.method === m); return fmt(sum(list) + (m === 'CASH' ? c.cash : 0)) + ' (' + (list.length + (m === 'CASH' ? c.cashCount : 0)) + ')' }
+  const n = all.length + c.count, first = c.first ?? all[0]?.or, last = all.at(-1)?.or ?? c.last
+  return `<div class="figures">
+    ${smallLine('ORs issued', n ? `${n}: ${first} to ${last}` : 'none')}
+    ${smallLine('Cash', by('CASH'))}${smallLine('Cheques', by('CHEQUE'))}${smallLine('Debit', by('DEBIT'))}
+    ${smallLine('Voided', fmt(sum(voided) + c.voided) + ' (' + (voided.length + c.voidCount) + ')')}
+    ${smallLine('Reprints', all.reduce((s, t) => s + t.reprints, 0) + c.reprints)}
+    ${smallLine('Kiosk credits refunded', fmt(state.refunds.reduce((s, x) => s + x.amount, 0)) + ' (' + state.refunds.length + ')')}
+    ${c.count ? `<p class="muted small">Includes ${c.count} payments taken on this terminal before it was set up again today, as head office has them.</p>` : ''}
+  </div>`
+}
+function differenceBlock(diff, anyCount = true) {
+  const label = !anyCount ? 'Difference' : diff === 0 ? 'Balanced' : diff > 0 ? 'Over' : 'Short'
+  const tone = !anyCount ? 'none' : diff === 0 ? '' : 'short'
+  const value = diff === 0 ? fmt(0) : `${diff > 0 ? 'Over' : 'Short'} ${fmt(Math.abs(diff))}`
+  return `<div class="change ${tone}" aria-live="polite"><div class="lbl">${label}</div><div class="val">${value}</div></div>`
+}
+function denomRow(d, first) {
+  const n = countOf(d)
+  return `<tr class="${n ? '' : 'zero'}">
+    <td class="mono denom">${fmt(d)}</td><td class="times" aria-hidden="true">&times;</td>
+    <td><input class="count" inputmode="numeric" placeholder="0" data-denom="${d}" value="${state.count[d] ?? ''}" aria-label="Count of ${fmt(d)}"${first ? ' data-first' : ''}></td>
+    <td class="num mono">${fmt(d * n)}</td>
+  </tr>`
+}
+function floatLine() {
+  const correct = state.floatEdit ? '' : '<button class="btn small" data-act="float-edit" aria-label="Correct the opening float">Correct</button>'
+  const line = `<div class="line float-line"><span>Opening float</span><span class="float-value">${correct}<span class="mono">${fmt(state.float)}</span></span></div>`
+  if (!state.floatEdit) return line
+  return line + `<div class="stack" aria-label="Correct the opening float">
+    <div class="field"><label for="float-fix">Opening float (${PESO})</label><input id="float-fix" inputmode="decimal" value="${(state.float / 100).toFixed(2)}"></div>
+    ${managerFields('float', 'approval-fields')}
+    ${errorCallout(state.floatErr)}
+    <div class="row" style="display:flex;gap:8px"><button class="btn" data-act="float-save">Save float</button><button class="btn ghost" data-act="float-cancel">Cancel</button></div>
+  </div>`
+}
+/* Shown right under an Over or Short: what it is, what to do, and the manager's sign-in. */
+function approvalPanel(diff) {
+  const how = `${diff > 0 ? 'over' : 'short'} by ${fmt(Math.abs(diff))}`
+  return `<section class="approval" aria-labelledby="approval-title">
+    <div class="approval-title" id="approval-title">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 2.5 16.5h15z M10 8.5v3.5 M10 14.4v.1"/></svg>
+      The count is ${how}
+    </div>
+    <p>Count the drawer again, or a branch manager approves the difference here with their own username and password.</p>
+    ${managerFields('close', 'approval-fields')}
+    ${errorCallout(state.closeErr)}
+  </section>`
+}
+function dayEndScreen() {
+  if (state.closed) return closedScreen()
+  const t = dayTotals()
+  const needsApproval = t.anyCount && t.diff !== 0
+  const sync = state.pending
+    ? `<span class="chip warn">${state.pending} waiting to sync: sent when the network is back</span>`
+    : '<span class="chip ok">Everything sent to head office</span>'
+  return `<section class="page">
+    <header class="page-head"><h1>Day end</h1>
+      <p class="muted lead">${longDate()}. Count the cash drawer, check the figures, then close the day. Head office receives the Z-reading; print it when you need a paper copy.</p></header>
+    <div class="pos day-end">
+      <div class="sheet drawer">
+        <div class="drawer-head"><h2>Cash drawer</h2><span class="muted small">Enter moves to the next line</span></div>
+        <table>
+          <tbody>
+            <tr class="group"><th colspan="4">Bills</th></tr>${BILLS.map((d, i) => denomRow(d, i === 0)).join('')}
+            <tr class="group"><th colspan="4">Coins</th></tr>${COINS.map((d) => denomRow(d)).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="3">Counted</td><td class="num mono">${fmt(t.counted)}</td></tr></tfoot>
+        </table>
+      </div>
+      <aside class="sheet money" aria-label="Checklist">
+        <h2>Checklist</h2>
+        <div class="figures-box"><h3>The day's figures</h3>${figures()}</div>
+        <p>${sync}</p>
+        <h3 class="cash-head">Cash</h3>
+        ${floatLine()}
+        <div class="line"><span>Cash expected</span><span class="mono">${fmt(t.expected)}</span></div>
+        <div class="line"><span>Cash counted</span><span class="mono">${fmt(t.counted)}</span></div>
+        ${differenceBlock(t.diff, t.anyCount)}
+        ${needsApproval ? approvalPanel(t.diff) : errorCallout(state.closeErr)}
+        <button id="close-day" class="btn primary big" data-act="close-day"${t.anyCount ? '' : ' disabled'}>${needsApproval ? 'Approve and close day' : 'Close day'}</button>
+        <p class="small muted">${t.anyCount ? 'After closing, this terminal takes no more payments for this day. Reprints still work.' : 'Enter the count to close the day.'}</p>
+      </aside>
+    </div>
+  </section>`
+}
+function closedScreen() {
+  const c = state.closed
+  const outcome = state.zPrint
+    ? `<div class="callout ${state.zPrint.ok ? 'ok' : 'bad'}" role="status">${state.zPrint.ok ? 'Z-reading printed.' : state.zPrint.message}</div>`
+    : ''
+  return `<section class="page day-closed">
+    <header class="page-head">
+      <div class="title-row"><h1>Day closed</h1><span class="chip ok">Closed ${c.at} by ${esc(c.by)}</span></div>
+      <p class="muted lead">${longDate()}. This terminal takes no more payments for this day; reprints still work. Head office has the Z-reading.</p>
+    </header>
+    <div class="closed-grid">
+      <div class="sheet panel" aria-label="Z-reading">
+        <div class="z-head"><h2>Z-reading</h2><span class="muted small mono">0001 Digos &middot; terminal 01</span></div>
+        ${figures()}
+        <div class="figures">${smallLine('Opening float', fmt(state.float))}${smallLine('Cash expected', fmt(c.expected))}${smallLine('Cash counted', fmt(c.counted))}</div>
+      </div>
+      <aside class="sheet money">
+        <h2>Cash</h2>
+        ${differenceBlock(c.diff)}
+        ${c.approvedBy ? `<p class="small">Difference approved by ${esc(c.approvedBy)}.</p>` : ''}
+        <div class="grow"></div>
+        <button class="btn primary big" data-act="print-z">Print Z-reading</button>
+        <p class="small muted">Print it when you need a paper copy, as often as needed.</p>
+        ${outcome}
+      </aside>
+    </div>
+  </section>`
+}
+
+/* ---------------------------------------------------------------- printer (F11) */
+/*
+ * As built: which printer, and where it prints. The teller prints the test page on a blank or
+ * spoiled form, nudges the offsets (arrow keys; Shift for bigger steps) and saves.
+ * Offsets as the printer takes them: 1/60 inch across, 1/216 inch down.
+ */
+const MAX_OFFSET = { x: 120, y: 216 }
+const toMm = (units, perInch) => ((units / perInch) * 25.4).toFixed(1)
+const offsetChanged = () => state.offset.x !== state.savedOffset.x || state.offset.y !== state.savedOffset.y
+/*
+ * The receipt layout in force, as the terminal receives it from head office (approved in the
+ * console). The two layouts are copied from packages/shared/src/receipts/template.ts:
+ * TWO_COPY_RECEIPT_TEMPLATE (the default, as on docs/reference/legacy/TPPA_Receipt_Layout.pdf)
+ * and ONE_COPY_RECEIPT_TEMPLATE.
+ */
+const PAGE = { widthIn: 8.5, heightIn: 5.5, cpi: 12, linesPerInch: 6 }
+const LAYOUTS = {
+  two: {
+    name: 'Two copies: office and customer\'s', version: 3,
+    page: { widthIn: 8.5, heightIn: 5.5, cpi: 15, linesPerInch: 4.5 },
+    layout: { kind: 'split', splitOffset: 61, cutAt: 60 },
+    staticText: [
+      { text: "Customers Copy", row: 5, col: 46, copy: 'right' },
+      { text: "Account ID           :", row: 6, col: 2 },
+      { text: "Name                 :", row: 7, col: 2 },
+      { text: "Payment Method       :", row: 9, col: 2 },
+      { text: "Date                 :", row: 10, col: 2 },
+      { text: "Transaction Id       :", row: 11, col: 2 },
+      { text: "Received by          :", row: 12, col: 2 },
+      { text: "VAT Sales               :", row: 13, col: 23 },
+      { text: "Non-VAT Sales           :", row: 14, col: 23 },
+      { text: "VAT Zero Related Sales  :", row: 15, col: 23 },
+      { text: "VAT Amount              :", row: 16, col: 23 },
+      { text: "BIR 2306                :", row: 17, col: 23 },
+      { text: "ADVANCE                 :", row: 18, col: 23 },
+      { text: "Total                   :", row: 19, col: 23 },
+      { text: "Amount Received         :", row: 20, col: 23 },
+      { text: "Amount Change           :", row: 21, col: 23 },
+    ],
+    fields: [
+      { key: 'accountId', row: 6, col: 27, width: 32 },
+      { key: 'payeeName', row: 7, col: 27, width: 32 },
+      { key: 'paymentMethod', row: 9, col: 27, width: 6 },
+      { key: 'chequeNo', row: 9, col: 34, width: 10 },
+      { key: 'chequeDate', row: 9, col: 45, width: 10 },
+      { key: 'dateTime', row: 10, col: 27, width: 32 },
+      { key: 'orNumber', row: 11, col: 27, width: 32 },
+      { key: 'tellerName', row: 12, col: 27, width: 32 },
+      { key: 'chequeBank', row: 13, col: 2, width: 20 },
+      { key: 'tenderRef', row: 14, col: 2, width: 20 },
+      { key: 'reprintMarker', row: 15, col: 2, width: 9 },
+      { key: 'vatSales', row: 13, col: 49, width: 10 },
+      { key: 'nonVatSales', row: 14, col: 49, width: 10 },
+      { key: 'vatZeroRatedSales', row: 15, col: 49, width: 10 },
+      { key: 'vatAmount', row: 16, col: 49, width: 10 },
+      { key: 'bir2306', row: 17, col: 49, width: 10 },
+      { key: 'advance', row: 18, col: 49, width: 10 },
+      { key: 'total', row: 19, col: 49, width: 10 },
+      { key: 'amountReceived', row: 20, col: 49, width: 10 },
+      { key: 'change', row: 21, col: 49, width: 10 },
+    ],
+  },
+  one: {
+    name: 'One copy', version: 1, page: PAGE,
+    layout: { kind: 'single' },
+    staticText: [
+      { text: 'OR No.', row: 9, col: 60 }, { text: 'Date', row: 10, col: 60 }, { text: 'Account ID', row: 11, col: 3 },
+      { text: 'Name', row: 12, col: 3 }, { text: 'Biller', row: 13, col: 3 }, { text: 'Paid by', row: 15, col: 3 },
+      { text: 'Cheque', row: 16, col: 3 }, { text: 'Bank', row: 17, col: 3 }, { text: 'Collection', row: 15, col: 52 },
+      { text: 'VATable sales', row: 16, col: 52 }, { text: 'VAT', row: 17, col: 52 }, { text: 'VAT-exempt sales', row: 18, col: 52 },
+      { text: 'Zero-rated sales', row: 19, col: 52 }, { text: 'BIR 2306', row: 20, col: 52 }, { text: 'BIR 2307', row: 21, col: 52 },
+      { text: 'TOTAL', row: 22, col: 52 }, { text: 'Received', row: 23, col: 52 }, { text: 'Change', row: 24, col: 52 },
+      { text: 'Teller', row: 26, col: 3 }, { text: 'Txn', row: 27, col: 3 },
+    ],
+    fields: [
+      { key: 'orNumber', row: 9, col: 68, width: 26 }, { key: 'dateTime', row: 10, col: 68, width: 26 },
+      { key: 'accountId', row: 11, col: 15, width: 30 }, { key: 'payeeName', row: 12, col: 15, width: 50 },
+      { key: 'billerName', row: 13, col: 15, width: 40 }, { key: 'paymentMethod', row: 15, col: 15, width: 30 },
+      { key: 'chequeNo', row: 16, col: 15, width: 15 }, { key: 'chequeDate', row: 16, col: 32, width: 10 },
+      { key: 'chequeBank', row: 17, col: 15, width: 30 },
+      { key: 'collectionAmount', row: 15, col: 74, width: 20, align: 'right' }, { key: 'feeVatable', row: 16, col: 74, width: 20, align: 'right' },
+      { key: 'feeVat', row: 17, col: 74, width: 20, align: 'right' }, { key: 'feeVatExempt', row: 18, col: 74, width: 20, align: 'right' },
+      { key: 'feeZeroRated', row: 19, col: 74, width: 20, align: 'right' }, { key: 'bir2306', row: 20, col: 74, width: 20, align: 'right' },
+      { key: 'bir2307', row: 21, col: 74, width: 20, align: 'right' }, { key: 'total', row: 22, col: 74, width: 20, align: 'right' },
+      { key: 'amountReceived', row: 23, col: 74, width: 20, align: 'right' }, { key: 'change', row: 24, col: 74, width: 20, align: 'right' },
+      { key: 'tenderRef', row: 23, col: 3, width: 30 }, { key: 'tellerName', row: 26, col: 15, width: 30 },
+      { key: 'terminalCode', row: 26, col: 47, width: 2 }, { key: 'branchCode', row: 26, col: 50, width: 4 },
+      { key: 'transactionNumber', row: 27, col: 15, width: 10 }, { key: 'reprintMarker', row: 28, col: 3, width: 20 },
+    ],
+  },
+}
+/* Sample values for the preview: SAMPLE_RECEIPT_VALUES in the shared package. */
+const SAMPLE_VALUES = {
+  orNumber: '0001-01-00012345', dateTime: 'Thu Nov 05 2026 15:38:07', transactionNumber: '0100012345',
+  accountId: '123-4567-8901', payeeName: 'JUAN DELA CRUZ', billerName: 'Davao Light and Power Co.',
+  paymentMethod: 'Cash', collectionAmount: '1,500.00', feeVatable: '1.79', feeVat: '0.21', feeVatExempt: '0.00',
+  feeZeroRated: '0.00', bir2306: '0.00', bir2307: '0.00', total: '1,502.00', amountReceived: '2,000.00',
+  change: '498.00', vatSales: '1,502.00', nonVatSales: '0.00', vatZeroRatedSales: '0.00', vatAmount: '0.00', advance: '0.00', tellerName: 'A. Reyes', terminalCode: '01', branchCode: '0001', reprintMarker: '',
+}
+const layoutInForce = () => LAYOUTS[state.layoutInForce]
+
+/* The same rules as the shared package: pageGrid, copyOffsets, cutColumn. */
+const CHARS_PER_INCH = { 10: 10, 12: 12, 15: 15, 17: 17.14, 20: 20 }
+function pageGrid(page) {
+  return { columns: Math.floor(Math.min(page.widthIn, 8) * CHARS_PER_INCH[page.cpi]), rows: Math.floor(page.heightIn * page.linesPerInch + 1e-9) }
+}
+function copyOffsets(t, copy = 'both') {
+  if (t.layout.kind !== 'split') return copy === 'right' ? [] : [0]
+  return { left: [0], right: [t.layout.splitOffset], both: [0, t.layout.splitOffset] }[copy]
+}
+const cutColumn = (t) => (t.layout.kind === 'split' ? t.layout.cutAt ?? t.layout.splitOffset : null)
+/* Rows before the first and after the last printed item: the pre-printed header and footer. */
+function printedRows(t) {
+  const rows = [...t.fields, ...t.staticText].map((item) => item.row)
+  return { first: Math.min(...rows), last: Math.max(...rows) }
+}
+/*
+ * What the printer puts on the form, as HTML lines. "test": the calibration page of
+ * packages/print/src/test-page.ts (labels as they are, each field as a box of its width:
+ * [orNumber....]); its ruler on the empty lines is left out of the preview. "receipt": the
+ * layout with the sample values, as layoutReceipt.
+ */
+function printedLines(t, mode) {
+  const { columns, rows } = pageGrid(t.page)
+  const grid = Array.from({ length: rows }, () => Array.from({ length: columns }, () => ({ c: ' ', field: false })))
+  const put = (row, col, text, field) => [...text].forEach((c, i) => { const cell = grid[row - 1]?.[col - 1 + i]; if (cell) Object.assign(cell, { c, field }) })
+  for (const s of t.staticText) for (const o of copyOffsets(t, s.copy)) put(s.row, s.col + o, s.text, false)
+  for (const o of copyOffsets(t)) {
+    for (const f of t.fields) {
+      const value = (SAMPLE_VALUES[f.key] ?? '').slice(0, f.width)
+      const text = mode === 'test'
+        ? (f.width >= 2 ? '[' + f.key.slice(0, f.width - 2).padEnd(f.width - 2, '.') + ']' : '#')
+        : f.align === 'right' ? value.padStart(f.width) : value.padEnd(f.width)
+      put(f.row, f.col + o, text, mode === 'test')
+    }
+  }
+  // Runs of field cells become one span each; the text is ASCII, so only &, < and > need escaping.
+  return grid.map((line) => line.reduce((html, cell, i) => {
+    const opens = cell.field && !line[i - 1]?.field, closes = cell.field && !line[i + 1]?.field
+    return html + (opens ? '<span class="f">' : '') + esc(cell.c) + (closes ? '</span>' : '')
+  }, '').trimEnd()).join('\n')
+}
+function formPreview() {
+  const t = layoutInForce(), { columns, rows } = pageGrid(t.page), { first, last } = printedRows(t)
+  const pageCols = t.page.widthIn * CHARS_PER_INCH[t.page.cpi]
+  const rowHeight = (n) => `calc(${n} * var(--row))`
+  const header = first > 1 ? `<div class="preprinted-band top" style="height:${rowHeight(first - 1)}"><span>Pre-printed: logo, TPPA name, address, VAT REG. TIN, telephone, website, e-mail</span></div>` : ''
+  const footer = last < rows ? `<div class="preprinted-band bottom" style="height:${rowHeight(t.page.heightIn * t.page.linesPerInch - last)}"><span>Pre-printed: system-generated receipt statement, CAS number, date and series</span></div>` : ''
+  const cut = cutColumn(t)
+  const vars = [`--cpi:${t.page.cpi}`, `--lpi:${t.page.linesPerInch}`, `--page-cols:${pageCols}`, `--cols:${columns}`, `--rows:${t.page.heightIn * t.page.linesPerInch}`,
+    `--margin-cols:${(pageCols - columns) / 2}`, `--dx:${(state.offset.x / 60) * t.page.cpi}`, `--dy:${(state.offset.y / 216) * t.page.linesPerInch}`]
+  return `<div class="form-wrap"><div class="form-sheet" style="${vars.join(';')}" role="img"
+      aria-label="${t.name} form, ${t.page.widthIn} by ${t.page.heightIn} inches: the ${state.previewMode === 'test' ? 'test page' : 'sample receipt'} where it prints with these offsets">
+    <div class="form-page">${header}${footer}
+      <div class="form-grid">${cut ? `<span class="form-cut" style="--cut:${cut}"></span>` : ''}<pre class="form-print">\n${printedLines(t, state.previewMode)}</pre></div>
+    </div>
+  </div></div>`
+}
+const arrow = (d) => `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="${d}"/></svg>`
+function nudgePad() {
+  const button = (nudge, label, path) => `<button class="btn" data-nudge="${nudge}" aria-label="${label}">${arrow(path)}</button>`
+  return `<div class="pad" role="group" aria-label="Move the print">
+    ${button('y:-1', 'Up', 'M10 15V5M5 10l5-5 5 5')}${button('x:-1', 'Left', 'M15 10H5M10 5l-5 5 5 5')}
+    <span class="pad-mid" aria-hidden="true">Move</span>
+    ${button('x:1', 'Right', 'M5 10h10M10 5l5 5-5 5')}${button('y:1', 'Down', 'M10 5v10M5 10l5 5 5-5')}
+  </div>`
+}
+function shiftReadout(label, units, perInch, plus, minus) {
+  const mm = toMm(units, perInch)
+  const value = units === 0 ? 'No shift' : `${mm} mm ${units > 0 ? plus : minus}`
+  return `<div class="shift"><div class="lbl">${label}</div><div class="val" aria-live="polite">${value}</div><div class="units">${units}/${perInch} inch</div></div>`
+}
+function printerCard() {
+  const options = PRINTERS.map(([name, isDefault]) => `<option value="${name}"${state.printer === name ? ' selected' : ''}>${name}${isDefault ? ' (Windows default)' : ''}</option>`).join('')
+  const chip = state.paperOut ? '<span class="chip bad">Out of paper</span>' : '<span class="chip ok">Ready</span>'
+  return `<div class="sheet panel">
+    <div class="preview-head"><h2>Receipt printer</h2>${state.printer ? chip : ''}</div>
+    <div class="field"><label for="printer">Printer</label>
+      <select id="printer"><option value="" disabled${state.printer ? '' : ' selected'}>Choose&hellip;</option>${options}</select>
+      <span class="hint">Choose the Epson LX-310. Receipts are sent as raw ESC/P, so other printers cannot print them.</span></div>
+  </div>`
+}
+function calibrationCard() {
+  const { x, y } = state.offset
+  const step = (n, title, body = '') => `<li class="cal-step"><span class="n">${n}</span><div class="body"><b>${title}</b>${body}</div></li>`
+  const unsaved = offsetChanged() ? '<span class="chip warn">Not saved</span>' : '<span class="small muted">Saved offsets in use</span>'
+  return `<div class="sheet panel">
+    <h2>Calibration</h2>
+    <ol class="cal-steps">
+      ${step(1, 'Load a blank or spoiled form')}
+      ${step(2, 'Print the test page', '<div><button class="btn primary" data-act="test-page">Print test page</button></div>')}
+      ${step(3, 'Move the print onto the boxes', `<div class="adjust">${nudgePad()}<div class="shifts">
+          ${shiftReadout('Across', x, 60, 'right', 'left')}${shiftReadout('Down', y, 216, 'down', 'up')}</div></div>
+        <p class="small muted">Arrow keys move it too; Shift + arrow moves more. Print the test page again to check.</p>`)}
+      ${step(4, 'Save the offsets', `<div class="save-row"><button class="btn" data-act="save-offsets"${offsetChanged() ? '' : ' disabled'}>Save offsets <kbd>Enter</kbd></button>${unsaved}</div>`)}
+    </ol>
+  </div>`
+}
+function printerScreen() {
+  const message = state.printerMsg ? `<div class="callout ${state.printerMsg.ok ? 'ok' : 'bad'}" role="status">${state.printerMsg.text}</div>` : ''
+  const t = layoutInForce()
+  const tab = (mode, label) => `<button class="btn" data-preview="${mode}" aria-pressed="${state.previewMode === mode}">${label}</button>`
+  const preview = `<div class="sheet panel">
+    <div class="preview-head"><h2>Where it prints</h2>
+      <div class="preview-tabs" role="group" aria-label="Show">${tab('test', 'Test page')}${tab('receipt', 'Sample receipt')}</div></div>
+    <p class="layout-chip">Receipt layout in force: <b>${t.name}</b>, version ${t.version} &middot; ${t.page.widthIn}" &times; ${t.page.heightIn}" form, ${t.page.cpi} characters per inch</p>
+    ${formPreview()}
+    <div class="legend"><span><i class="k-print"></i>Printed: moves with the offsets</span><span><i class="k-pre"></i>Pre-printed on the form</span>${cutColumn(t) ? '<span><i class="k-cut"></i>Where the form is cut</span>' : ''}</div>
+  </div>`
+  return `<section class="page printer-screen">
+    <header class="page-head"><h1>Printer</h1><p class="muted lead">The receipt printer of this terminal and where it prints on the form.</p></header>
+    ${message}
+    <div class="printer-grid">
+      ${state.printer ? preview : ''}
+      <div class="page" style="gap:18px">${printerCard()}${state.printer ? calibrationCard() : ''}</div>
+    </div>
+  </section>`
+}
+function nudge(axis, direction, big) {
+  const step = (big ? 6 : 1) * (axis === 'y' ? 3 : 1)
+  state.offset[axis] = Math.min(MAX_OFFSET[axis], Math.max(0, state.offset[axis] + direction * step))
+  render()
+}
+function saveOffsets() { state.savedOffset = { ...state.offset }; state.printerMsg = { ok: true, text: 'Offsets saved.' }; render() }
+function printTestPage() {
+  if (offsetChanged()) state.savedOffset = { ...state.offset }
+  state.printerMsg = state.paperOut ? { ok: false, text: 'Printer is out of paper. Load forms, then print the test page again.' } : { ok: true, text: 'Test page sent. Compare the boxes with the boxes on the form.' }
+  render()
+}
+
+/* ---------------------------------------------------------------- overlays */
+function helpOverlay() {
+  const k = [['Enter', 'Next step / confirm'], ['Esc', 'Back one step'], ['F1', 'This help'], ['F2', 'New payment'], ['F3', 'Add another account'], ['F4', 'Done adding: go to payment'],
+    ['F5 / F6 / F8', 'Cash / Cheque / Debit'], ['F7', "Today's payments (reprint, void)"], ['F9', 'Reprint the last receipt (marked REPRINTED)'], ['F10', 'Day end: cash count and Z-reading'], ['F11', 'Printer and calibration'], ['F12', 'Lock the screen']]
+  return '<div class="scrim" data-act="help-close"><div class="sheet modal" role="dialog" aria-label="Keyboard shortcuts" onclick="event.stopPropagation()"><h2>Keyboard shortcuts</h2><p class="muted">Everything works without the mouse.</p>' +
+    '<div class="keys">' + k.map(([a, b]) => '<kbd>' + a + '</kbd><span>' + b + '</span>').join('') + '</div><div class="actions"><button class="btn primary" data-act="help-close">Close <kbd>Esc</kbd></button></div></div></div>'
+}
+/*
+ * Refund a kiosk credit (K5d, as built). Step 1: the code from the slip, checked with head office
+ * (online only). Step 2: what the slip is worth, and a branch manager approves with their own
+ * password, as for a void. Head office marks it refunded in the same step, so a slip is paid
+ * once, at one counter. Then the cash is paid out of this drawer.
+ */
+function refundModal({ code = '', credit = null, error = null } = {}) {
+  const facts = credit
+    ? `<dl class="credit-facts">
+        <dt>Amount</dt><dd class="amount">${fmt(credit.amount)}</dd>
+        <dt>Issued</dt><dd>${credit.issued}</dd>
+        <dt>Kiosk</dt><dd>${credit.kiosk}</dd>
+        <dt>Why</dt><dd>${credit.reason}</dd>
+      </dl>`
+    : ''
+  const step2 = credit
+    ? `${facts}
+       <p class="muted">Take the slip from the customer and check its code matches. A branch manager approves the refund here with their own password.</p>
+       ${managerFields('refund')}`
+    : `<p class="muted">Type or scan the code on the customer's kiosk credit slip. It is checked with head office, so it needs the network.</p>
+       <div class="field"><label for="refund-code">Code on the slip</label><input id="refund-code" class="code-input" maxlength="14" placeholder="KC-XXXX-XXXX" autocomplete="off" value="${esc(code)}"></div>`
+  return () => `<div class="scrim">
+    <form class="sheet modal refund" role="dialog" aria-label="Refund a kiosk credit" data-refund-form="${credit ? 'pay' : 'look'}">
+      <h2>${credit ? 'Refund ' + esc(code) : 'Refund a kiosk credit'}</h2>
+      <div class="stack">
+        ${step2}
+        ${error ? `<div class="callout bad" role="alert">${error}</div>` : ''}
+      </div>
+      <div class="actions">
+        <button class="btn" type="button" data-act="modal-close">Cancel <kbd>Esc</kbd></button>
+        ${credit
+          ? `<button class="btn danger" type="submit">Refund ${fmt(credit.amount)} <kbd>Enter</kbd></button>`
+          : '<button class="btn primary" type="submit">Check the code <kbd>Enter</kbd></button>'}
+      </div>
+    </form>
+  </div>`
+}
+let refundCode = ''
+function lookUpCredit() {
+  const code = creditCode($('#refund-code').value)
+  refundCode = code
+  const again = (error) => { state.modal = refundModal({ code, error }); render(); $('#refund-code').focus() }
+  // The app's order (kiosk-credits.ts): signed in, the code, the day still open here; only then head office.
+  if (!/^KC-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/.test(code)) return again('Enter the whole code, as on the slip: KC, then two groups of four letters and numbers.')
+  if (state.closed) return again('The day is closed on this terminal: the drawer is counted. Refund it at another counter, or tomorrow.')
+  if (!state.online) return again('No network. A kiosk credit is checked with head office so it is paid only once. Connect to the network, or ask the customer to come back.')
+  const credit = CREDITS[code]
+  if (!credit) return again('Head office has no kiosk credit with this code. Check the code on the slip. If it is right, call head office: do not pay it out.')
+  if (credit.refunded) return again(`Already refunded ${credit.refunded}. Do not pay it out again; keep the slip and call head office.`)
+  state.modal = refundModal({ code, credit }); render(); $('#refund-manager').focus()
+}
+function payCredit() {
+  const credit = CREDITS[refundCode]
+  const refuse = (message) => { state.modal = refundModal({ code: refundCode, credit, error: message }); render(); return focusPassword('refund') }
+  // The screen checks the two fields; then the same order as the look-up; head office checks the manager.
+  if (!($('#refund-manager').value || '').trim() || !$('#refund-password').value) { state.managerName.refund = $('#refund-manager').value.trim(); return refuse("Enter the branch manager's username and password.") }
+  if (state.closed) return refuse('The day is closed on this terminal: the drawer is counted. Refund it at another counter, or tomorrow.')
+  if (!state.online) { state.managerName.refund = $('#refund-manager').value.trim(); return refuse('No network. A kiosk credit is checked with head office so it is paid only once. Connect to the network, or ask the customer to come back.') }
+  const approved = checkManager('refund', 'a refund')
+  if (!approved.ok) return refuse(approved.message)
+  credit.refunded = `${new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', ...MANILA })}, ${nowTime()} at Digos 0001, counter 01, by ${state.teller?.name || ''} (approved by ${approved.name})`
+  state.refunds.push({ code: refundCode, amount: credit.amount })
+  state.pending++; state.modal = null
+  state.refundNotice = `Pay ${fmt(credit.amount)} to the customer from the drawer, and keep the slip ${refundCode} with today's papers. Approved by ${approved.name}.`
+  render()
+}
+/* The void, approved here by a branch manager with their own password (as built). */
+function voidModal(i, error = null, reason = '') {
+  const t = state.today[i]
+  return () => `<div class="scrim">
+    <form class="sheet modal void" role="dialog" aria-label="Void OR ${t.or}" data-void-form="${i}">
+      <h2>Void OR ${t.or}</h2>
+      <p class="muted">${esc(t.name)}, ${maskAcct(t.acct)}. A branch manager approves on this screen with their own password. The OR number is kept and never reused.</p>
+      <div class="stack">
+        <div class="field"><label for="void-reason">Reason</label><input id="void-reason" maxlength="255" placeholder="e.g. Wrong account entered" value="${esc(reason)}"></div>
+        ${managerFields('void')}
+        ${error ? `<div class="callout bad" role="alert">${error}</div>` : ''}
+      </div>
+      <div class="actions">
+        <button class="btn ghost" type="button" data-act="modal-close">Cancel <kbd>Esc</kbd></button>
+        <button class="btn danger" type="submit">Void receipt <kbd>Enter</kbd></button>
+      </div>
+    </form>
+  </div>`
+}
+function submitVoid(i) {
+  const reason = $('#void-reason').value.trim()
+  const retry = (message, focus) => { state.modal = voidModal(i, message, reason); render(); focus() }
+  if (reason.length < 3) return retry('Enter the reason, e.g. "Wrong account entered".', () => $('#void-reason').focus())
+  const approved = checkManager('void', 'a void')
+  if (!approved.ok) return retry(approved.message, () => focusPassword('void'))
+  const t = state.today[i]
+  Object.assign(t, { status: 'VOIDED', voidReason: reason })
+  state.pending++; state.modal = null
+  state.voidNotice = `OR ${t.or} voided. Approved by ${approved.name}.`
+  render()
+}
+let toastTimer
+function toast(msg) { document.querySelector('.toast')?.remove(); const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg; document.body.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 2600) }
+
+/* ---------------------------------------------------------------- actions */
+function readDraft() {
+  if ($('#acct')) state.draft.digits = $('#acct').value.replace(/\D/g, '').slice(0, 11)
+  if ($('#payee')) state.draft.name = $('#payee').value
+  if ($('#amt')) state.draft.amount = $('#amt').value
+  if ($('#recv')) { if ($('#recv').value !== state.receivedText) state.receivedAuto = false; state.receivedText = $('#recv').value; state.received = parseAmt(state.receivedText) || 0 }
+  if ($('#cq-no')) Object.assign(state.cheque, { no: $('#cq-no').value.trim(), date: $('#cq-date').value, bank: $('#cq-bank').value, type: $('#cq-type').value })
+  if ($('#dref')) state.debitRef = $('#dref').value
+}
+function go(step) { state.step = step; state.draft.err = null; render() }
+function acctNext() {
+  readDraft(); const d = state.draft
+  if (d.digits.length !== 11) { d.err = utilityOf(state.utility).name + ' account IDs have 11 digits; this has ' + d.digits.length + '.'; return render() }
+  if (!d.name.trim()) { d.err = null; render(); $('#payee').focus(); toast('Enter the customer name as printed on the bill.'); return }
+  go('amount')
+}
+function addAmount() {
+  readDraft(); const a = parseAmt(state.draft.amount)
+  if (!a) { state.draft.err = 'Enter the bill amount, for example 1500.00.'; render(); return false }
+  state.accounts.push({ digits: state.draft.digits, name: state.draft.name.trim().toUpperCase(), amount: a, utility: state.utility })
+  state.draft = { digits: '', name: '', amount: '' }
+  return true
+}
+/*
+ * Back (Esc) goes exactly one step back, never further:
+ *   4. Print   -> 3. Payment
+ *   3. Payment -> 2. Amount due, with the last account reopened so its amount can be corrected
+ *   2. Amount  -> 1. Account, keeping what was typed
+ *   1. Account -> 3. Payment, when adding another account was started by mistake (the empty
+ *                 extra account is dropped); on the very first account there is nothing before.
+ */
+function back() {
+  if (state.step === 'confirm') return go('tender')
+  if (state.step === 'tender') {
+    const last = state.accounts.pop()
+    if (last) state.draft = { digits: last.digits, name: last.name, amount: (last.amount / 100).toFixed(2) }
+    return go('amount')
+  }
+  if (state.step === 'amount') return go('account')
+  if (state.step === 'account' && state.accounts.length && !state.draft.digits) return go('tender')
+}
+function print() {
+  // As built: the printer must be ready before any OR number is used; otherwise nothing is recorded.
+  if (state.paperOut) { state.payErr = 'Printer is out of paper. Load forms, then press Enter to print. Nothing is recorded yet.'; return render() }
+  state.payErr = null
+  const n = state.accounts.length
+  const ors = state.accounts.map((_, i) => orStr(state.orNext + i))
+  state.accounts.forEach((a, i) => state.today.push({ or: ors[i], time: nowTime(), acct: a.digits, name: a.name, amount: a.amount, fee: FEE, method: state.method, status: 'VALID', reprints: 0, utility: a.utility, voidReason: null }))
+  state.orNext += n; state.txn += n; state.pending += n + 1 /* the tender and its payments */
+  state.lastTender = ors
+  // Paper running out half-way: the payment is saved, the receipts are reprinted with F9.
+  const error = state.midPaper
+  state.midPaper = $('#m-midpaper').checked = false
+  state.printed = { ors, change: totals().change, method: state.method, error }
+  render()
+  if (state.online) setTimeout(() => { state.pending = 0; if (state.screen === 'pay') render() }, 1200)
+}
+function resetSale() {
+  Object.assign(state, { step: 'account', accounts: [], draft: { digits: '', name: '', amount: '' }, method: 'CASH', received: 0, receivedText: '', receivedAuto: true, cheque: { no: '', date: '', bank: '', type: 'LOCAL' }, debitRef: '', printed: null, utility: DEFAULT_UTILITY, pickerOpen: false, reprintNotice: null, payErr: null })
+}
+function act(a, el) {
+  if (a === 'register') return doRegister()
+  // Keep a code already typed on the not-recognised screen (the only one with #nrcode).
+  if (a === 'told') { if (state.nr && $('#nrcode')) state.nr.code = $('#nrcode').value; state.told = el.checked; render(); return $('#told')?.focus() }
+  if (a === 'nr-setup') return doNrSetup()
+  if (a === 'nr-retry') {
+    state.nr.code = $('#nrcode').value; state.nr.err = null
+    state.nr.retry = 'Still not recognised: ' + (state.online ? NR_MESSAGE[state.nr.reason] : 'Cannot reach the server at https://pos.tppa.example. Check the network cable or Wi-Fi.')
+    return render()
+  }
+  if (a === 'setup-again') {
+    if (state.unsentAtReset && !state.told) return
+    // The files are set aside and the app starts again as a fresh install. The new setup
+    // continues the receipt numbers from head office's last known one; the unsent OR numbers
+    // are noted first (previous-install.json) for its range notice.
+    if (state.unsentAtReset) { state.previous = { ors: unsentOrs(), told: false }; state.orNext -= 3 }
+    state.wasReset = true; state.reg = null; state.screen = 'register'; return render()
+  }
+  if (a === 'prev-told') { state.previous.told = el.checked; render(); return $('#prev-told')?.focus() }
+  // Head office was told: the note is marked and not shown again.
+  if (a === 'to-signin') { if (state.previous && !state.previous.told) return; state.previous = null; state.screen = 'signin'; return render() }
+  if (a === 'signin') return doSignIn()
+  if (a === 'unlock') { if (!$('#lp').value) { state.lock = { err: 'Enter your password.' }; return render() } state.lock = null; state.screen = 'pay'; return render() }
+  if (a === 'lock') { readDraft(); state.screen = 'locked'; return render() }
+  if (a === 'help') { state.help = true; return render() }
+  if (a === 'help-close') { state.help = false; return render() }
+  if (a === 'acct-next') return acctNext()
+  if (a === 'to-tender') { readDraft(); return go('tender') }
+  if (a === 'amt-done') { if (addAmount()) go('tender'); return }
+  if (a === 'amt-another') { if (addAmount()) go('account'); return }
+  if (a === 'add-more') { readDraft(); return go('account') }
+  if (a === 'back') { readDraft(); return back() }
+  if (a === 'exact') { state.receivedAuto = true; state.received = totals().due; state.receivedText = (state.received / 100).toFixed(2); return render() }
+  if (a === 'to-confirm') { readDraft(); state.cheque.touched = true; if (tenderReady()) go('confirm'); else render(); return }
+  if (a === 'print') return print()
+  if (a === 'next') { resetSale(); return render() }
+  // On the Printed panel: the same receipts again; the panel then says Printed (or what to fix).
+  if (a === 'reprint-now' || a === 'reprint-panel') {
+    if (state.paperOut) { state.printed.error = true; return render() }
+    state.printed.ors.forEach((or) => { state.today.find((t) => t.or === or).reprints++; state.pending++ })
+    state.printed.error = false; return render()
+  }
+  if (a === 'reprint-last') { reprintOrs(state.lastTender); return render() }
+  if (a === 'check-settings') {
+    // As built: pull now. Offline, the server's answer is shown next to the button.
+    state.checkNote = state.online ? null : 'Cannot reach the server at https://pos.tppa.example. Check the network cable or Wi-Fi.'
+    if (state.online && state.stale) state.stale = $('#m-stale').checked = false
+    return render()
+  }
+  if (a === 'modal-close') { state.modal = null; return render() }
+  if (a === 'refund-open') { state.voidNotice = state.refundNotice = state.reprintNotice = null; state.modal = refundModal(); render(); return $('#refund-code').focus() }
+  if (a === 'picker-open') { readDraft(); state.pickerOpen = true; render(); return $('.utility.on')?.focus() }
+  if (a === 'float-edit') { state.floatEdit = true; state.floatErr = null; render(); return $('#float-fix').focus() }
+  if (a === 'float-cancel') { state.floatEdit = false; return render() }
+  if (a === 'float-save') return saveFloat()
+  if (a === 'close-day') return closeDay()
+  if (a === 'test-page') return printTestPage()
+  if (a === 'save-offsets') return saveOffsets()
+  // As built: the settings are downloaded again; only the time on the chip changes.
+  if (a === 'pull-now') return render()
+  if (a === 'new-day') return startNewDay()
+  if (a === 'print-z') {
+    state.zPrint = state.paperOut ? { ok: false, message: 'Printer is out of paper. Load forms, then print it again.' } : { ok: true }
+    return render()
+  }
+}
+/* Mock-up control: the next business day, so the start-of-day float shows before the first payment. */
+function startNewDay() {
+  resetSale()
+  Object.assign(state, { today: [], lastTender: [], refunds: [], refundNotice: null, count: {}, closed: null, closeErr: null, zPrint: null, voidNotice: null, floatNeeded: true, floatErr: null, modal: null, menu: false })
+  state.teller ||= { name: 'Ana Reyes', username: 'areyes' }
+  state.screen = 'pay'; render(); $('#float')?.select()
+}
+function reprint(t) { state.voidNotice = state.refundNotice = null; reprintOrs([t.or]) }
+function saveFloat() {
+  const value = parseAmt($('#float-fix').value)
+  if (value === null) { state.floatErr = 'Enter the float, for example 2000.00.'; return render() }
+  if (value !== state.float) {
+    const approved = checkManager('float', 'a float correction')
+    if (!approved.ok) { state.floatErr = approved.message; render(); return focusPassword('float') }
+  }
+  Object.assign(state, { float: value, floatEdit: false, floatErr: null }); render()
+}
+function closeDay() {
+  const t = dayTotals()
+  let approvedBy = null
+  if (t.diff !== 0) {
+    const approved = checkManager('close', 'the cash difference')
+    if (!approved.ok) { state.closeErr = approved.message; render(); return focusPassword('close') }
+    approvedBy = approved.name
+  }
+  state.closeErr = null
+  state.closed = { at: nowTime(), by: state.teller?.name || '', diff: t.diff, expected: t.expected, counted: t.counted, approvedBy }
+  state.zPrint = null; render()
+}
+/* Another screen (tab or F key): the notices of the one left go, as in the app. */
+function showScreen(screen) {
+  if (screen !== state.screen) Object.assign(state, { reprintNotice: null, checkNote: null, voidNotice: null, refundNotice: null })
+  state.screen = screen
+}
+const ARROWS = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
+/* Arrow keys inside a radio group: the next option is chosen and takes the focus. */
+function moveRadio(values, current, step) { return values[(values.indexOf(current) + step + values.length) % values.length] }
+document.addEventListener('submit', (e) => {
+  e.preventDefault()
+  const form = e.target
+  if (form.matches('[data-void-form]')) return submitVoid(Number(form.dataset.voidForm))
+  if (form.matches('[data-refund-form="look"]')) return lookUpCredit()
+  if (form.matches('[data-refund-form="pay"]')) return payCredit()
+  if (form.matches('[data-float-form]')) return recordFloat()
+})
+document.addEventListener('change', (e) => {
+  if (e.target.id !== 'printer') return
+  state.printer = e.target.value; state.printerMsg = { ok: true, text: `Receipts print on ${state.printer}.` }; render()
+})
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act],[data-nav],[data-method],[data-add],[data-remove],[data-reprint],[data-void],[data-go],[data-theme-choice],[data-utility],[data-nudge],[data-preview]')
+  // Any click outside the open account menu closes it.
+  if (state.menu && !e.target.closest('.acctm')) { state.menu = false; if (!t) return render() }
+  if (!t) return
+  if (t.dataset.themeChoice) { state.theme = t.dataset.themeChoice; render(); return $(`[data-theme-choice="${state.theme}"]`).focus() }
+  if (t.dataset.utility) return chooseUtility(t.dataset.utility)
+  if (t.dataset.preview) { state.previewMode = t.dataset.preview; return render() }
+  if (t.dataset.nudge) { const [axis, direction] = t.dataset.nudge.split(':'); return nudge(axis, Number(direction), false) }
+  if (t.dataset.act === 'menu') { state.menu = !state.menu; render(); return $('.theme-opt[aria-checked="true"]')?.focus() }
+  if (t.dataset.act === 'signout') { state.menu = false; state.teller = null; state.screen = 'signin'; return render() }
+  if (state.menu) state.menu = false
+  if (t.dataset.go === 'notrec') {
+    // As the app would after 5 minutes of refusals: shift ended, payments stopped.
+    Object.assign(state, { teller: null, modal: null, help: false, unsentAtReset: $('#m-unsent').checked, told: false, nr: { reason: t.dataset.reason }, screen: 'notrec' })
+    return render()
+  }
+  if (t.dataset.go === 'reset') {
+    // As the app would at its next contact: the key is refused (TERMINAL_RESET), everyone is signed out.
+    Object.assign(state, { teller: null, modal: null, help: false, unsentAtReset: $('#m-unsent').checked, told: false, nr: null, screen: 'reset' })
+    return render()
+  }
+  if (t.dataset.go) { if (!state.teller) state.teller = { name: 'Ana Reyes', username: 'areyes' }; state.nr = null; showScreen(t.dataset.go); if (t.dataset.go === 'register') state.reg = null; return render() }
+  if (t.dataset.nav) { readDraft(); showScreen(t.dataset.nav); return render() }
+  if (t.dataset.method) { readDraft(); state.method = t.dataset.method; return render() }
+  if (t.dataset.add) { readDraft(); state.received = (state.receivedAuto ? 0 : state.received) + Number(t.dataset.add); state.receivedAuto = false; state.receivedText = (state.received / 100).toFixed(2); return render() }
+  if (t.dataset.remove) { readDraft(); state.accounts.splice(Number(t.dataset.remove), 1); if (!state.accounts.length && state.step !== 'amount') state.step = 'account'; return render() }
+  if (t.dataset.reprint) { reprint(state.today[Number(t.dataset.reprint)]); return render() }
+  if (t.dataset.void) { state.voidNotice = state.refundNotice = state.reprintNotice = null; state.modal = voidModal(Number(t.dataset.void)); render(); return $('#void-reason').focus() }
+  act(t.dataset.act, t)
+})
+document.addEventListener('input', (e) => {
+  const el = e.target
+  if (el.id === 'refund-code') { el.value = el.value.length > 3 ? creditCode(el.value) : el.value.toUpperCase(); return }
+  // "Set up with this code" waits for a code (and, with unsent records, the tick).
+  if (el.id === 'nrcode') { state.nr.code = el.value; $('#nr-setup').disabled = !el.value.trim() || (state.unsentAtReset && !state.told); return }
+  if (el.id === 'acct') {
+    const d = el.value.replace(/\D/g, '').slice(0, 11), before = state.draft.digits
+    state.draft.digits = d; el.value = maskAcct(d)
+    if (d.length === 11 && before.length !== 11 && known[d] && !$('#payee').value) { readDraft(); state.draft.name = known[d].name; render(); $('#acct').focus() }
+    return
+  }
+  if (el.id === 'recv') { readDraft(); const pos = el.selectionStart; const right = document.querySelector('.money'); right.outerHTML = moneyPanel(); const btn = document.querySelector('[data-act="to-confirm"]'); if (btn) btn.disabled = !tenderReady(); el.setSelectionRange(pos, pos); return }
+  if (el.dataset.denom) { state.count[el.dataset.denom] = el.value.replace(/\D/g, ''); const id = el.dataset.denom; render(); const n = document.querySelector('[data-denom="' + id + '"]'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); return }
+  if (el.id?.startsWith('cq-')) { readDraft(); const btn = document.querySelector('[data-act="to-confirm"]'); if (btn) btn.disabled = !tenderReady(); if (el.id === 'cq-date') { const id = el.id; render(); $('#' + id).focus() } }
+})
+document.addEventListener('keydown', (e) => {
+  const k = e.key
+  const step = ARROWS[k], target = e.target.dataset || {}
+  if (step && target.utility) {
+    e.preventDefault(); state.utility = moveRadio(branchUtilities().map((u) => u.code), state.utility, step)
+    render(); return $(`[data-utility="${state.utility}"]`).focus()
+  }
+  if (step && target.themeChoice) {
+    e.preventDefault(); state.theme = moveRadio(THEMES.map(([v]) => v), state.theme, step)
+    render(); return $(`[data-theme-choice="${state.theme}"]`).focus()
+  }
+  // Printer screen: arrow keys nudge (Shift: more), Enter saves the offsets.
+  if (state.screen === 'printer' && state.printer && !state.help && e.target.tagName !== 'SELECT') {
+    const axis = { ArrowLeft: 'x', ArrowRight: 'x', ArrowUp: 'y', ArrowDown: 'y' }[k]
+    if (axis) { e.preventDefault(); return nudge(axis, step, e.shiftKey) }
+    if (k === 'Enter' && offsetChanged() && e.target.tagName !== 'BUTTON') { e.preventDefault(); return saveOffsets() }
+  }
+  if (state.help) { if (k === 'Escape' || k === 'F1') { e.preventDefault(); state.help = false; render() } return }
+  if (state.modal) { if (k === 'Escape') { state.modal = null; render() } return }
+  if (state.menu && k === 'Escape') { e.preventDefault(); state.menu = false; render(); return document.querySelector('.account')?.focus() }
+  if (k === 'Enter') {
+    if (e.target.closest?.('.mock')) return
+    const screen = state.screen
+    if (screen === 'register') { e.preventDefault(); return $('#go-signin') && !$('#go-signin').disabled ? act('to-signin') : $('#reg') ? doRegister() : null }
+    if (screen === 'signin') { e.preventDefault(); return doSignIn() }
+    if (screen === 'locked') { e.preventDefault(); return act('unlock') }
+    // Reset: no Enter shortcut; with nothing unsent the button has the focus, so Enter presses it.
+    if (screen === 'notrec' && e.target.tagName === 'INPUT' && e.target.id !== 'told') { e.preventDefault(); return doNrSetup() }
+    // Day end: Enter moves down the count, as on a calculator; from the last line to Close day.
+    if (screen === 'dayend' && target.denom) {
+      e.preventDefault()
+      const next = DENOMS[DENOMS.indexOf(Number(target.denom)) + 1]
+      return (next ? $(`[data-denom="${next}"]`) : $(dayTotals().diff ? '#close-manager' : '#close-day'))?.focus()
+    }
+    if (screen !== 'pay' || (state.floatNeeded && !state.printed)) return
+    e.preventDefault()
+    if (state.printed) return state.printed.error ? act('reprint-now') : act('next')
+    if (state.step === 'account') { if (e.target.id === 'acct' && !$('#payee').value) { readDraft(); return $('#payee').focus() } return acctNext() }
+    if (state.step === 'amount') return act('amt-done')
+    if (state.step === 'tender') return act('to-confirm')
+    if (state.step === 'confirm') return act('print')
+  }
+  if (!state.teller || ['register', 'signin', 'locked'].includes(state.screen)) return
+  const map = { Escape: 'back', F1: 'help', F12: 'lock' }
+  if (k in map) { e.preventDefault(); if (k === 'Escape' && state.screen !== 'pay') return; return act(map[k]) }
+  const views = { F2: 'pay', F7: 'today', F10: 'dayend', F11: 'printer' }
+  if (k in views) { e.preventDefault(); readDraft(); showScreen(views[k]); return render() }
+  // F9 on Today (as built): every receipt of the last tender again.
+  if (k === 'F9' && state.screen === 'today') { e.preventDefault(); return act('reprint-last') }
+  if (state.screen !== 'pay') return
+  if (k === 'F3') { e.preventDefault(); return state.step === 'amount' ? act('amt-another') : act('add-more') }
+  if (k === 'F4' && state.accounts.length) { e.preventDefault(); readDraft(); return go('tender') }
+  // F9 on Payment: the receipts on the Printed panel again, else the last tender's.
+  if (k === 'F9') { e.preventDefault(); return state.printed ? act('reprint-panel') : act('reprint-last') }
+  if (state.step === 'tender' && ['F5', 'F6', 'F8'].includes(k)) { e.preventDefault(); readDraft(); state.method = { F5: 'CASH', F6: 'CHEQUE', F8: 'DEBIT' }[k]; return render() }
+})
+/* The mock-up panel: open or closed and the tab, kept in localStorage. */
+const mockPanel = (() => {
+  const key = 'tppa-mock-panel'
+  let saved = {}
+  try { saved = JSON.parse(localStorage.getItem(key) || '{}') } catch {}
+  const tabs = ['screens', 'situations', 'office', 'help']
+  const save = () => { try { localStorage.setItem(key, JSON.stringify(saved)) } catch {} }
+  const setOpen = (open) => {
+    saved.open = open; save()
+    $('#mock-panel').hidden = !open; $('#mock-open').hidden = open; $('#mock-open').setAttribute('aria-expanded', String(open))
+    if (open) $('#mt-' + (saved.tab || 'screens')).focus({ preventScroll: true })
+  }
+  const setTab = (tab, focus) => {
+    saved.tab = tab; save()
+    for (const t of tabs) {
+      const on = t === tab
+      $('#mt-' + t).setAttribute('aria-selected', String(on)); $('#mt-' + t).tabIndex = on ? 0 : -1; $('#mp-' + t).hidden = !on
+    }
+    if (focus) $('#mt-' + tab).focus()
+  }
+  $('#mock-open').addEventListener('click', () => setOpen(true))
+  $('#mock-close').addEventListener('click', () => setOpen(false))
+  $('#mock').addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#mock-panel').hidden) { e.stopPropagation(); setOpen(false); $('#mock-open').focus() } })
+  for (const t of tabs) $('#mt-' + t).addEventListener('click', () => setTab(t))
+  $('.mock-tabs').addEventListener('keydown', (e) => {
+    const i = tabs.indexOf(saved.tab || 'screens')
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); setTab(tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length], true) }
+  })
+  setTab(saved.tab || 'screens'); setOpen(saved.open !== false)
+  return { mark: () => document.querySelectorAll('.mock-grid [data-go]').forEach((b) => (b.dataset.go === state.screen ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'))) }
+})()
+function afterRender() {
+  mockPanel.mark()
+  const focus = { register: state.reg?.done ? '#go-signin' : '#reg', signin: state.signin?.u ? '#p' : '#u', locked: '#lp', reset: state.unsentAtReset ? null : '#setup-again' }[state.screen] ||
+    (state.screen === 'pay' && state.floatNeeded && !state.printed ? '#float' : null) ||
+    (state.screen === 'pay' && !state.printed ? { account: '#acct', amount: '#amt', tender: state.method === 'CASH' ? '#recv' : state.method === 'CHEQUE' ? '#cq-no' : '#dref', confirm: '[data-act="print"]' }[state.step] : state.printed ? '.actions .btn.primary' : null)
+  const el = focus && document.querySelector(focus)
+  if (el && !el.disabled && document.activeElement?.closest?.('.mock') == null) el.focus()
+}
+
+/* Mock-up controls */
+const bind = (id, key) => $(id).addEventListener('change', (e) => { state[key] = e.target.checked; render() })
+bind('#m-online', 'online'); bind('#m-paper', 'paperOut'); bind('#m-midpaper', 'midPaper'); bind('#m-low', 'orLow'); bind('#m-clock', 'clockOff'); bind('#m-stale', 'stale')
+$('#m-layout').addEventListener('change', (e) => { state.layoutInForce = e.target.value; render() })
+$('#m-carried').addEventListener('change', (e) => { state.carried = e.target.checked ? CARRIED : null; render() })
+document.addEventListener('focusin', (e) => { if (e.target.id === 'recv' && state.receivedAuto) e.target.select() })
+$('#m-one').addEventListener('change', (e) => { state.oneUtility = e.target.checked; state.utility = DEFAULT_UTILITY; state.pickerOpen = false; render() })
+$('#m-dark').addEventListener('change', render)
+$('#m-online').addEventListener('change', () => { if (state.online && state.pending) setTimeout(() => { state.pending = 0; render() }, 1200) })
+render()
+</script>
+</body>
+</html>

@@ -1,0 +1,1215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TPPA kiosk: mock-up (not production)</title>
+<!--
+  MOCK-UP for approval (kiosk step K1, docs/plans/2026-11-07-kiosk-design.md). Throwaway: not
+  part of the app. Self-contained: no network, no fonts to download. All names, numbers and
+  codes are synthetic. Nothing is saved; reload resets everything.
+  The customer screens describe the app as built (K5d, 2026-11-08); staff mode is still the
+  design for K7.
+  The kiosk screen is a 1920 x 1080 landscape touchscreen, drawn to scale and fitted to the
+  window. The panel on the right stands in for the hardware (cash, scanner, doors, printer).
+  Layout: what the customer is doing on the left, what they touch on the right; the language
+  at the top; Cancel, Back and Next always in the same row at the bottom.
+-->
+<style>
+:root {
+  --paper: #f6f4ef; --sheet: #fffefb; --sheet-2: #fbfaf6;
+  --ink: #1c2530; --ink-2: #47515d; --ink-3: #626a76;
+  --rule: rgba(28,37,48,.10); --rule-2: rgba(28,37,48,.18);
+  --meter: #1f5ea8; --meter-soft: #e8eff8; --on-accent: #ffffff;
+  --ok: #24693f; --ok-soft: #e3f1e8; --warn: #8a5a0b; --warn-soft: #faf0dc; --bad: #b0322a; --bad-soft: #f7e5e2;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+  --lift: 0 0 0 1px rgba(28,37,48,.07), 0 2px 4px -1px rgba(28,37,48,.08), 0 8px 20px rgba(28,37,48,.06);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #2a2f36; font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; overflow: hidden; }
+button { font: inherit; color: inherit; }
+p { margin: 0; }
+
+/* The kiosk: a 1920 x 1080 screen in its housing, scaled to fit the window beside the controls. */
+.stage { position: fixed; inset: 0 var(--dock) 0 0; }
+.housing { position: absolute; left: 50%; top: 50%; padding: 28px 28px 56px; border-radius: 36px; background: #14181d; box-shadow: 0 30px 80px rgba(0,0,0,.5); transform-origin: center; }
+.screen { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); border-radius: 8px; font-size: 30px; line-height: 1.35; }
+.housing .slot { margin: 18px auto 0; width: 360px; height: 14px; border-radius: 7px; background: #000; }
+
+/* Frame: brand and language on top, the task in two columns, the actions at the bottom. */
+.k { display: grid; grid-template-rows: 112px 1fr 136px; height: 100%; }
+.kbar { display: flex; align-items: center; gap: 20px; padding: 0 56px; border-bottom: 2px solid var(--rule); }
+.brand { display: flex; align-items: center; gap: 18px; }
+.brand b { font-size: 34px; letter-spacing: -.01em; }
+.logo { flex: none; fill: #00a2ff; }
+.progress-steps { display: flex; gap: 10px; margin-left: 56px; }
+.progress-steps i { width: 64px; height: 10px; border-radius: 5px; background: var(--rule-2); }
+.progress-steps i.done { background: var(--ok); }
+.progress-steps i.on { background: var(--meter); }
+.progress-label { font-size: 24px; font-weight: 600; color: var(--ink-3); }
+.kbar .langs { margin-left: auto; }
+.kmain { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; padding: 40px 56px; min-height: 0; }
+.kmain.single { grid-template-columns: minmax(0, 1fr); }
+.col { display: flex; flex-direction: column; gap: 26px; min-height: 0; }
+.kfoot { display: flex; align-items: center; gap: 24px; padding: 0 56px; border-top: 2px solid var(--rule); }
+.kfoot .grow { flex: 1; }
+h1 { margin: 0; font-size: 60px; line-height: 1.1; letter-spacing: -.02em; font-weight: 650; text-wrap: balance; }
+.sub { font-size: 32px; color: var(--ink-2); text-wrap: pretty; }
+
+/* Controls: at least 96 px tall. */
+.kbtn { display: inline-flex; align-items: center; justify-content: center; gap: 14px; min-height: 96px; min-width: 220px; padding: 0 40px; border-radius: 18px; border: 3px solid var(--rule-2); background: var(--sheet); font-size: 34px; font-weight: 650; cursor: pointer; transition: transform 100ms var(--ease); }
+.kbtn:disabled { opacity: .45; cursor: not-allowed; }
+.kbtn:active { transform: scale(.97); }
+.kbtn.primary { background: var(--meter); border-color: var(--meter); color: var(--on-accent); min-width: 320px; }
+.kbtn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+.langs { display: inline-flex; gap: 8px; padding: 6px; border-radius: 20px; background: var(--sheet-2); border: 2px solid var(--rule); }
+.langs button { min-height: 72px; padding: 0 24px; border: 0; border-radius: 14px; background: transparent; font-size: 26px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.langs button[aria-pressed="true"] { background: var(--sheet); color: var(--ink); box-shadow: var(--lift); }
+
+/*
+ * Start screen. Left: what this is, in all three languages (no language is chosen yet), what to
+ * bring, and the four steps. Right, the focal point: three start buttons, each in its own
+ * language, so choosing the language is starting. The cash rules run along the bottom.
+ */
+.start { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: 1fr auto; height: 100%; }
+.start-left { display: flex; flex-direction: column; gap: 34px; padding: 64px 72px 40px; }
+.start-left .brand b { font-size: 40px; }
+.start-left .brand span { display: block; font-size: 24px; color: var(--ink-3); }
+.headline h1 { font-size: 84px; }
+.headline .also { margin-top: 14px; display: grid; gap: 4px; font-size: 34px; color: var(--ink-2); }
+.bring { display: flex; gap: 20px; }
+.bring div { flex: 1; display: flex; align-items: center; gap: 18px; padding: 20px 24px; border-radius: 18px; background: var(--sheet); box-shadow: var(--lift); font-size: 28px; font-weight: 600; }
+.bring svg { flex: none; width: 56px; height: 56px; fill: none; stroke: var(--meter); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.steps4 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.steps4 li { display: flex; flex-direction: column; gap: 10px; font-size: 26px; color: var(--ink-2); }
+.steps4 .n { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--meter-soft); color: var(--meter); font-size: 26px; font-weight: 700; }
+.start-right { display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 64px 72px 40px 56px; background: var(--sheet); border-left: 2px solid var(--rule); }
+.start-right .ask { font-size: 30px; font-weight: 650; color: var(--ink-2); }
+.start-right .ask span { display: block; font-size: 24px; font-weight: 500; color: var(--ink-3); }
+.go { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 152px; padding: 0 40px; border-radius: 24px; border: 0; background: var(--meter); color: var(--on-accent); text-align: left; cursor: pointer; transition: transform 100ms var(--ease); }
+.go:active { transform: scale(.98); }
+.go b { display: block; font-size: 46px; line-height: 1.1; }
+.go span { font-size: 24px; opacity: .85; }
+.go svg { flex: none; width: 56px; height: 56px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+/* Always light, whatever Windows is set to (owner, Nov 7): the rules band is meter-soft. */
+.rules { grid-column: 1 / -1; display: flex; align-items: center; gap: 40px; padding: 26px 72px; background: var(--meter-soft); border-top: 1px solid var(--rule); color: var(--ink); font-size: 28px; }
+.rules .item { display: flex; align-items: center; gap: 14px; }
+.rules .item i { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--meter); }
+.rules .warn-item { padding: 10px 22px; border-radius: 999px; background: #e3b25f; color: #1c2530; font-weight: 700; }
+.rules .companies { margin-left: auto; display: flex; gap: 12px; }
+.rules .companies span { padding: 6px 14px; border-radius: 10px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule); font: 700 22px var(--mono); }
+
+/* Tiles, entries, keypad, keyboard. */
+.tiles { display: grid; gap: 22px; align-content: start; }
+.tile { display: flex; align-items: center; gap: 26px; min-height: 150px; padding: 0 36px; border-radius: 22px; border: 3px solid var(--rule-2); background: var(--sheet); text-align: left; cursor: pointer; }
+.tile .code { flex: none; padding: 10px 18px; border-radius: 12px; background: var(--meter); color: var(--on-accent); font: 700 28px var(--mono); letter-spacing: .04em; }
+.tile .nm { font-size: 38px; font-weight: 650; }
+.entry { min-height: 124px; padding: 22px 30px; border-radius: 20px; background: var(--sheet); border: 3px solid var(--meter); box-shadow: 0 0 0 6px var(--meter-soft); font: 600 60px/1.2 var(--mono); letter-spacing: .02em; overflow-wrap: anywhere; }
+.entry.placeholder { color: var(--ink-3); font-weight: 400; }
+.entry.invalid { border-color: var(--bad); box-shadow: 0 0 0 6px var(--bad-soft); }
+.entry.name { font-family: var(--sans); font-size: 52px; }
+.hint { font-size: 26px; color: var(--ink-3); }
+.err { font-size: 28px; color: var(--bad); font-weight: 600; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-content: start; }
+.keypad button { min-height: 132px; border-radius: 20px; border: 3px solid var(--rule-2); background: var(--sheet); font: 600 56px var(--mono); cursor: pointer; }
+.keypad button:active { background: var(--meter-soft); }
+.keypad .fn { font: 600 30px var(--sans); color: var(--ink-2); }
+.name-top { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 48px; align-items: end; }
+.keyboard { display: grid; gap: 12px; }
+.keyboard .row { display: flex; gap: 12px; justify-content: center; }
+.keyboard button { flex: 1; max-width: 150px; min-height: 104px; border-radius: 14px; border: 3px solid var(--rule-2); background: var(--sheet); font: 600 38px var(--sans); cursor: pointer; }
+.keyboard button.space { max-width: 760px; flex: 6; font-size: 28px; }
+.keyboard button.fn { max-width: 260px; flex: 2; font-size: 28px; color: var(--ink-2); }
+.scan { display: flex; align-items: center; gap: 26px; padding: 26px 30px; border-radius: 22px; background: var(--meter-soft); }
+.scan svg { flex: none; width: 88px; height: 88px; fill: none; stroke: var(--meter); stroke-width: 3; }
+.scan b { display: block; font-size: 34px; }
+.or { display: flex; align-items: center; gap: 20px; font-size: 26px; color: var(--ink-3); }
+.or::before, .or::after { content: ""; flex: 1; height: 2px; background: var(--rule-2); }
+
+/* Review and insert: the money, large; the total largest. */
+.review { display: grid; padding: 28px 34px; border-radius: 24px; background: var(--sheet); box-shadow: var(--lift); }
+.review .row { display: flex; justify-content: space-between; gap: 24px; padding: 14px 0; border-bottom: 2px solid var(--rule); font-size: 32px; }
+.review .row:last-child { border-bottom: 0; }
+.review .row span:first-child { color: var(--ink-3); }
+.review .row b { text-align: right; }
+.total-box { padding: 36px 40px; border-radius: 28px; background: var(--sheet); box-shadow: var(--lift); }
+.total-box .lbl { font-size: 32px; font-weight: 650; color: var(--ink-2); }
+.total-box .val { font: 700 120px/1.05 var(--mono); color: var(--meter); letter-spacing: -.02em; }
+.total-box.done .val { color: var(--ok); }
+.callout { border-radius: 20px; padding: 24px 28px; font-size: 28px; }
+.callout.warn { background: var(--warn-soft); }
+.callout b { font-weight: 650; }
+.no-change { display: flex; align-items: center; gap: 18px; padding: 20px 26px; border-radius: 18px; background: var(--warn-soft); font-size: 30px; font-weight: 650; }
+.no-change i { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--warn); color: #fff; font-style: normal; font-weight: 800; }
+.bar { height: 24px; margin-top: 24px; border-radius: 12px; background: var(--rule); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--ok); transition: width 300ms var(--ease); }
+.money-row { display: flex; justify-content: space-between; font-size: 30px; color: var(--ink-2); margin-top: 16px; }
+.money-row b { font-family: var(--mono); color: var(--ink); }
+.denoms { display: grid; gap: 16px; padding: 28px 32px; border-radius: 24px; background: var(--sheet); box-shadow: var(--lift); }
+.denoms h2 { margin: 0; font-size: 28px; font-weight: 650; color: var(--ink-2); }
+.denom-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.denom { display: inline-flex; align-items: center; justify-content: center; min-width: 148px; min-height: 80px; padding: 0 20px; border-radius: 14px; border: 3px solid var(--ok); background: var(--ok-soft); color: var(--ok); font: 700 32px var(--mono); }
+.denom.coin { min-width: 100px; border-radius: 50px; }
+.denom.off { border-color: var(--rule-2); background: transparent; color: var(--ink-3); text-decoration: line-through; opacity: .7; }
+.returned { display: flex; gap: 22px; align-items: center; padding: 24px 28px; border-radius: 20px; background: var(--warn-soft); font-size: 30px; animation: pop 280ms var(--ease); }
+.returned svg { flex: none; width: 60px; height: 60px; fill: none; stroke: var(--warn); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes pop { from { transform: scale(.96); opacity: 0; } }
+
+/* Message screens: done, stop, credit, resume, out of service. */
+.message { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 72px; padding: 0 140px; }
+.message .text { display: flex; flex-direction: column; gap: 26px; }
+.badge { display: grid; place-items: center; width: 260px; height: 260px; border-radius: 50%; }
+.badge svg { width: 140px; height: 140px; fill: none; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+.badge.ok { background: var(--ok-soft); } .badge.ok svg { stroke: var(--ok); }
+.badge.warn { background: var(--warn-soft); } .badge.warn svg { stroke: var(--warn); }
+.badge.bad { background: var(--bad-soft); } .badge.bad svg { stroke: var(--bad); }
+.big-or { font: 700 56px var(--mono); }
+.countdown { font-size: 26px; color: var(--ink-3); }
+/* Out of service: light like every screen; the red stop badge and a red top rule say it. */
+.oos { background: var(--paper); box-shadow: inset 0 10px 0 var(--bad); }
+.oos .branch { padding: 26px 32px; border-radius: 20px; background: var(--sheet); box-shadow: var(--lift); font-size: 30px; }
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(15,20,26,.55); z-index: 5; }
+.overlay .card { width: 980px; padding: 56px; border-radius: 32px; background: var(--sheet); display: grid; gap: 28px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+
+/* Staff mode: a working screen, English only. */
+.staff .kbar { background: var(--sheet); color: var(--ink); box-shadow: inset 0 -4px 0 #e3b25f; }
+.staff .kbar .door { margin-left: auto; padding: 10px 22px; border-radius: 999px; background: #e3b25f; color: #1c2530; font-size: 24px; font-weight: 700; }
+.staff { background: #eef1f5; }
+.panel { padding: 30px 34px; border-radius: 24px; background: var(--sheet); box-shadow: var(--lift); display: grid; gap: 18px; align-content: start; }
+.panel h2 { margin: 0; font-size: 36px; }
+.state-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.state { padding: 18px 22px; border-radius: 16px; background: var(--sheet-2); border: 2px solid var(--rule); }
+.state .lbl { font-size: 22px; color: var(--ink-3); }
+.state .v { font-size: 30px; font-weight: 650; }
+.state.ok .v { color: var(--ok); } .state.bad .v { color: var(--bad); }
+.staff-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-content: start; }
+.staff-menu .kbtn { min-height: 150px; flex-direction: column; gap: 6px; font-size: 32px; }
+.staff-menu .kbtn span { font-size: 22px; font-weight: 500; color: var(--ink-3); }
+table.box { width: 100%; border-collapse: collapse; font-size: 26px; }
+/* K7: what needs fixing, the reprint list, what was recorded. */
+.fixes .fix { display: flex; align-items: center; gap: 18px; padding: 10px 0; border-top: 2px solid var(--rule); }
+.fixes .fix:first-of-type { border-top: 0; }
+/* A safety net: a long list scrolls inside its column, never off the screen. */
+.staff .kmain > .col { min-height: 0; overflow-y: auto; }
+.fixes .fix > div { flex: 1; display: grid; gap: 4px; font-size: 26px; }
+.fixes .fix span { color: var(--ink-3); font-size: 22px; }
+.fixes .kbtn { min-height: 56px; font-size: 24px; }
+table.box.reprints td { vertical-align: middle; }
+table.box.reprints .kbtn { min-height: 60px; font-size: 22px; }
+.muted { color: var(--ink-3); font-size: 22px; }
+.ok-note { margin: 0; padding: 16px 22px; border-radius: 16px; background: #e6f4ea; color: #1e6b3a; font-size: 24px; font-weight: 600; }
+ul.log { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: 22px; }
+table.box td { padding: 6px 0; border-bottom: 2px solid var(--rule); }
+table.box td.num { text-align: right; font-family: var(--mono); }
+table.box tr.total td { border-bottom: 0; border-top: 3px solid var(--ink); font-weight: 700; padding-top: 16px; }
+.field { display: grid; gap: 10px; }
+.field label { font-size: 26px; font-weight: 600; color: var(--ink-2); }
+.meter-bar { height: 26px; border-radius: 13px; background: var(--rule); overflow: hidden; }
+.meter-bar i { display: block; height: 100%; }
+
+/* Mock-up controls (not part of the kiosk): dark, compact, an 8 px grid, 12-13 px type, visible focus. */
+:root { --dock: 340px; }
+:root.mock-folded { --dock: 44px; }
+.mock { --m-bg: #12171c; --m-bg2: #1c232b; --m-line: #33404c; --m-ink: #e8eaed; --m-ink2: #a9b1bb; --m-on: #3b82f6;
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--dock); z-index: 40; background: var(--m-bg); color: var(--m-ink);
+  border-left: 1px solid var(--m-line); font: 13px/1.4 var(--sans, system-ui, sans-serif); display: flex; flex-direction: column; }
+.mock [hidden] { display: none !important; }
+.mock button, .mock select { font: inherit; color: inherit; }
+.mock :focus-visible { outline: 2px solid #8ab4ff; outline-offset: 2px; }
+.mock-rail { display: none; flex: 1; flex-direction: column; align-items: center; gap: 10px; padding: 14px 0; border: 0; background: transparent; cursor: pointer; }
+.mock-folded .mock-rail { display: flex; }
+.mock-folded .mock-panel { display: none; }
+.mock-rail .rail-tx { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 600; letter-spacing: .02em; }
+.mock .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--m-on); }
+.mock-panel { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.mock-head { display: flex; align-items: center; gap: 8px; padding: 12px 8px 4px 14px; }
+.mock-head .tag { display: block; font-size: 11px; color: var(--m-ink2); }
+.mock-x { margin-left: auto; width: 30px; height: 30px; border: 1px solid var(--m-line); border-radius: 6px; background: var(--m-bg2); cursor: pointer; font-size: 18px; line-height: 1; }
+.mock-sub { margin: 0 14px 10px; color: var(--m-ink2); font-size: 12px; }
+.mock-tabs { display: grid; grid-template-columns: repeat(5, auto); gap: 2px; margin: 0 10px; padding: 2px; background: var(--m-bg2); border-radius: 8px; }
+.mock-tabs button { position: relative; height: 28px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 12px; color: var(--m-ink2); }
+.mock-tabs [aria-selected="true"] { background: var(--m-bg); color: var(--m-ink); font-weight: 600; }
+.mock .badge { display: inline-flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box; width: auto; max-width: 32px; vertical-align: 1px; min-width: 16px; height: 16px; margin-left: 4px; padding: 0 4px; border-radius: 8px; background: var(--m-on); color: #fff; font-size: 10px; font-weight: 700; }
+.mock-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px 16px; scrollbar-width: thin; scrollbar-color: var(--m-line) transparent; }
+.mock-body section { display: flex; flex-direction: column; gap: 8px; }
+.mock h3 { margin: 6px 0 0; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--m-ink2); }
+.mock-grid { display: grid; gap: 6px; } .mock-grid.g3 { grid-template-columns: repeat(3, 1fr); } .mock-grid.g4 { grid-template-columns: repeat(4, 1fr); }
+.mock-list { display: flex; flex-direction: column; gap: 6px; }
+.mock-grid button, .mock-list button { min-height: 32px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--m-line); background: var(--m-bg2); cursor: pointer; font-size: 12px; text-align: left; }
+.mock-grid button { text-align: center; font-family: var(--mono); }
+.mock-grid button:hover, .mock-list button:hover { border-color: #4d5c6b; background: #222a33; }
+.mock button.note { border-color: #3d6b4f; } .mock button.coin { border-radius: 16px; border-color: #6b5a3d; }
+.tg { display: flex; gap: 10px; align-items: flex-start; padding: 3px 0; cursor: pointer; }
+.tg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tg .sw { flex: none; position: relative; width: 30px; height: 18px; margin-top: 1px; border-radius: 9px; background: #3a4552; transition: background 120ms; }
+.tg .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 120ms; }
+.tg input:checked + .sw { background: var(--m-on); }
+.tg input:checked + .sw::after { transform: translateX(12px); }
+.tg input:focus-visible + .sw { outline: 2px solid #8ab4ff; outline-offset: 2px; }
+.tg small { display: block; font-size: 11px; color: var(--m-ink2); }
+.mock-note { margin: 0; color: var(--m-ink2); font-size: 12px; line-height: 1.45; } .mock-note b, .mock-dl b { color: var(--m-ink); }
+.mock-dl { margin: 0; display: grid; gap: 4px; font-size: 12px; } .mock-dl dt { color: var(--m-ink2); margin-top: 4px; } .mock-dl dd { margin: 0; }
+
+.roll { --rf: 12px; position: relative; width: calc(var(--cols) * 1ch + 28px); box-sizing: border-box; padding: 16px 14px 22px; background: #fffefb; color: #1c2530; font: var(--rf)/1.45 var(--mono); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(28,37,48,.12); }
+.roll::after { content: ''; position: absolute; left: 0; right: 0; bottom: -7px; height: 8px; background: linear-gradient(-45deg, transparent 5px, #fffefb 0) 0 0 / 10px 8px repeat-x, linear-gradient(45deg, transparent 5px, #fffefb 0) 0 0 / 10px 8px repeat-x; }
+.roll .rl { white-space: pre; overflow: hidden; }
+.roll .a-c { text-align: center; } .roll .a-r { text-align: right; }
+.roll .s-b { font-weight: 700; }
+.roll .s-l { font-size: 2em; line-height: 1.2; font-weight: 700; }
+.mock .roll { --rf: 9.6px; margin: 0 auto 18px; }
+.mock pre.slip { margin: 0; padding: 12px 10px; background: #fbfaf6; color: #1c2530; font: 11px/1.35 var(--mono); border-radius: 3px; white-space: pre; overflow-x: auto; }
+.mock .cut { border-top: 1px dashed #626a76; margin: 8px 0; }
+.review-tr { position: fixed; inset: 20px calc(var(--dock) + 20px) 20px 20px; overflow: auto; z-index: 50; padding: 24px; border-radius: 12px; background: #fffefb; color: #1c2530; font-size: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.review-tr table { width: 100%; border-collapse: collapse; }
+.review-tr th, .review-tr td { padding: 8px 10px; border-bottom: 1px solid rgba(28,37,48,.1); text-align: left; vertical-align: top; }
+.review-tr th { position: sticky; top: -24px; background: #fffefb; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #626a76; }
+.review-tr code { font-size: 12px; color: #626a76; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="stage"><div class="housing" id="housing"><div class="screen" id="screen"></div><div class="slot" title="Receipt slot"></div></div></div>
+
+<!--
+  Mock-up controls (not part of the kiosk): a dock on the right with the kiosk's hardware stand-ins.
+  Five tabs, so one short list shows at a time; the body scrolls inside the window; it folds to a
+  slim rail (the kiosk screen then uses the whole window). Remembers the tab and folded or not
+  (localStorage "tppa-kiosk-mock-panel").
+-->
+<aside class="mock" id="mock" aria-label="Mock-up controls (not part of the kiosk)">
+  <button class="mock-rail" id="mock-open" type="button" aria-expanded="false" aria-controls="mock-panel" title="Show the mock-up controls">
+    <span class="dot" aria-hidden="true"></span><span class="rail-tx">Mock-up controls</span><span class="badge" id="mock-badge-rail" hidden></span>
+  </button>
+  <div class="mock-panel" id="mock-panel">
+    <div class="mock-head">
+      <div><b>Mock-up controls</b><span class="tag">not part of the kiosk</span></div>
+      <button class="mock-x" id="mock-close" type="button" aria-label="Fold the mock-up controls">&rsaquo;</button>
+    </div>
+    <p class="mock-sub">Stand-ins for the kiosk's hardware. Tap the kiosk screen as a customer would.</p>
+    <div class="mock-tabs" role="tablist" aria-label="Controls">
+      <button role="tab" id="mt-hw" aria-controls="mp-hw" aria-selected="true">Hardware</button>
+      <button role="tab" id="mt-sit" aria-controls="mp-sit" aria-selected="false" tabindex="-1">Situations</button>
+      <button role="tab" id="mt-time" aria-controls="mp-time" aria-selected="false" tabindex="-1">Time</button>
+      <button role="tab" id="mt-print" aria-controls="mp-print" aria-selected="false" tabindex="-1">Printer<span class="badge" id="mock-badge" hidden></span></button>
+      <button role="tab" id="mt-help" aria-controls="mp-help" aria-selected="false" tabindex="-1">Help</button>
+    </div>
+    <div class="mock-body">
+      <section role="tabpanel" id="mp-hw" aria-labelledby="mt-hw">
+        <h3>Note acceptor</h3><div class="mock-grid g3" id="m-notes"></div>
+        <h3>Coin acceptor</h3><div class="mock-grid g4" id="m-coins"></div>
+        <h3>Barcode scanner</h3>
+        <div class="mock-list">
+          <button data-mock="scan" data-code="12345678901">Scan bill 123-4567-8901</button>
+          <button data-mock="scan" data-code="20401234567">Scan 204-0123-4567</button>
+          <button data-mock="scan" data-code="1234">Scan a bad barcode</button>
+        </div>
+      </section>
+      <section role="tabpanel" id="mp-sit" aria-labelledby="mt-sit" hidden>
+        <h3>Kiosk</h3>
+      <label class="tg"><input type="checkbox" id="m-printfail"><span class="sw" aria-hidden="true"></span><span class="tx">Printer fails<small>at the next print</small></span></label>
+      <label class="tg"><input type="checkbox" id="m-refuse"><span class="sw" aria-hidden="true"></span><span class="tx">Next bill refused<small>cannot be paid here</small></span></label>
+      <label class="tg"><input type="checkbox" id="m-paper"><span class="sw" aria-hidden="true"></span><span class="tx">Paper near its end</span></label>
+      <label class="tg"><input type="checkbox" id="m-jam"><span class="sw" aria-hidden="true"></span><span class="tx">Note acceptor jammed</span></label>
+      <label class="tg"><input type="checkbox" id="m-box"><span class="sw" aria-hidden="true"></span><span class="tx">Cash box at its limit</span></label>
+      <label class="tg"><input type="checkbox" id="m-stale"><span class="sw" aria-hidden="true"></span><span class="tx">Settings older than 36 h</span></label>
+        <h3>Head office</h3>
+      <label class="tg"><input type="checkbox" id="m-off"><span class="sw" aria-hidden="true"></span><span class="tx">Out of service</span></label>
+      <label class="tg"><input type="checkbox" id="m-reset"><span class="sw" aria-hidden="true"></span><span class="tx">Registration reset</span></label>
+      <label class="tg"><input type="checkbox" id="m-notrec"><span class="sw" aria-hidden="true"></span><span class="tx">Does not recognise this kiosk<small>for 5 minutes</small></span></label>
+        <h3>Staff</h3>
+      <label class="tg"><input type="checkbox" id="m-door"><span class="sw" aria-hidden="true"></span><span class="tx">Service door open<small>staff mode</small></span></label>
+      </section>
+      <section role="tabpanel" id="mp-time" aria-labelledby="mt-time" hidden>
+        <div class="mock-list">
+          <button data-mock="idle">No tap for idleSeconds</button>
+          <button data-mock="abandon">3 min without new cash</button>
+          <button data-mock="power">Power cut and restart</button>
+        </div>
+        <p class="mock-note">Countdowns are live. Before any cash, no tap for the settings' <b>idleSeconds</b> (60 s here) asks "Are you still there?", which goes back to the start after 15 s more. Paid: back after 20 s; credit: after 60 s.</p>
+      </section>
+      <section role="tabpanel" id="mp-print" aria-labelledby="mt-print" hidden>
+        <p class="mock-note">As printed from the thermal layout approved in the console (Receipt layout, Thermal roll): 80 mm, 48 characters a line, cut after each slip. Newest first.</p>
+        <div id="m-slips"><p class="mock-note">Nothing printed yet.</p></div>
+      </section>
+      <section role="tabpanel" id="mp-help" aria-labelledby="mt-help" hidden>
+        <dl class="mock-dl">
+          <dt>Staff sign-in</dt><dd>Switch on Staff, Service door open; then <b>custodian1</b>, any password. Reprint lists what was printed today; Today prints the day so far or the last Z-reading. Faults (Situations) appear under What needs fixing.</dd>
+          <dt>Amounts</dt><dd>Centavos: <b>1500.37</b>. Over the limit: <b>60000</b>.</dd>
+          <dt>Already paid today</dt><dd><b>123-4567-8901</b></dd>
+          <dt>Cannot be paid here</dt><dd>A bad bill, or out of service since the start: switch on <b>Next bill refused</b>, then Next on the amount. It stops straight away, with Back only when there is a total.</dd>
+          <dt>Power cut</dt><dd>Cash in, the rest still to insert: the payment resumes. The total already in: it is paid. Cash in while payments are blocked (settings older than 36 h, a reset, not recognised): the cash becomes a credit (INTERRUPTED). No cash in: it times out silently. On the credit screen, the same credit comes back after the restart, with its code (for 10 minutes, until Done).</dd>
+          <dt>Out of service while typing</dt><dd>For example Paper near its end on the account step: the screen is covered, what was typed is kept, and it comes back when the kiosk does.</dd>
+        </dl>
+        <h3>Translations</h3>
+        <div class="mock-list"><button data-mock="translations">Review all texts (EN / FIL / CEB)</button></div>
+        <p class="mock-note">Filipino and Cebuano are drafts for review by the project owner (KQ7). The kiosk shows only the languages enabled in its settings (<code>LANGUAGES</code>): the start buttons, the other headlines and the language switch. The out-of-service screen offers all three.</p>
+      </section>
+    </div>
+  </div>
+</aside>
+
+<script>
+'use strict'
+const $ = (s, root = document) => root.querySelector(s)
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const PESO = '₱'
+/* Money in centavos (integers keep the mock exact; the app uses decimal strings). */
+const fmt = (c) => PESO + (c / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const FEE = 200, FEE_VATABLE = 179, FEE_VAT = 21
+const LIMIT = 5_000_000 // 50,000.00 per payment (design section 8)
+const BOX_LIMIT = 30_000_000 // 300,000.00 in the cash box
+const NOTES = [2000, 5000, 10000, 20000, 50000, 100000]
+const COINS = [100, 500, 1000, 2000]
+const UTILITIES = [
+  { code: 'DLP', name: 'Davao Light and Power Co.', digits: 11, mask: (d) => [d.slice(0, 3), d.slice(3, 7), d.slice(7, 11)].filter(Boolean).join('-') },
+  { code: 'VECO', name: 'Visayan Electric Co.', digits: 11, mask: (d) => [d.slice(0, 4), d.slice(4, 8), d.slice(8, 11)].filter(Boolean).join('-') },
+]
+const PAID_TODAY = { '12345678901': '9:14 AM' }
+const LANGS = [['en', 'English'], ['fil', 'Filipino'], ['ceb', 'Cebuano']]
+/* The kiosk settings (console): the languages enabled, and the seconds without a tap before
+ * "Are you still there?". The overlay then counts STILL_THERE_SECONDS more. */
+const LANGUAGES = ['en', 'fil', 'ceb']
+const IDLE_SECONDS = 60
+const STILL_THERE_SECONDS = 15
+const DONE_SECONDS = 20
+const CREDIT_SECONDS = 60
+/* The steps before any cash, where "Are you still there?" may ask. */
+const BEFORE_CASH = ['utility', 'account', 'name', 'amount', 'review', 'stop']
+/* A note or coin as on the screen: "₱1,000", "₱1". */
+const denom = (c) => PESO + (c / 100).toLocaleString('en-PH')
+const SMALLEST = Math.min(...COINS, ...NOTES)
+
+/* ------------------------------------------------------------------ texts (three languages)
+ * Every text a customer sees. Filipino (fil) and Cebuano (ceb) are drafts for the project
+ * owner's review (KQ7). {x} are filled in. Staff mode and printed slips are in English.
+ * Vocabulary, one word per thing: "Next" moves on, "Back" goes back one step, "Cancel" ends the
+ * visit before cash, "Done" finishes. Buttons start with a verb.
+ * The same keys and words as the app (apps/kiosk/src/renderer/src/texts.ts). */
+const TEXT = {
+  brandLine: { en: 'Bills payment', fil: 'Bayad ng bill', ceb: 'Bayad sa bill' },
+  headline: { en: 'Pay your electric bill here', fil: 'Magbayad ng bill sa kuryente dito', ceb: 'Bayri dinhi ang imong bill sa kuryente' },
+  bringBill: { en: 'Your bill', fil: 'Ang iyong bill', ceb: 'Ang imong bill' },
+  bringCash: { en: 'The exact amount in cash', fil: 'Ang eksaktong halaga, cash', ceb: 'Ang eksaktong kantidad, cash' },
+  step1: { en: 'Scan the barcode on your bill', fil: 'I-scan ang barcode sa iyong bill', ceb: 'I-scan ang barcode sa imong bill' },
+  step2: { en: 'Check the amount and the fee', fil: 'Suriin ang halaga at ang fee', ceb: 'Susiha ang kantidad ug ang fee' },
+  step3: { en: 'Insert the exact cash', fil: 'Ihulog ang eksaktong cash', ceb: 'Isulod ang eksaktong cash' },
+  step4: { en: 'Take your official receipt', fil: 'Kunin ang iyong opisyal na resibo', ceb: 'Kuhaa ang imong opisyal nga resibo' },
+  startIn: { en: 'Start in English', fil: 'Magsimula sa Filipino', ceb: 'Sugod sa Cebuano' },
+  startHint: { en: 'Tap to begin', fil: 'I-tap para magsimula', ceb: 'I-tap aron magsugod' },
+  ruleCash: { en: 'Cash only: notes {notes}, coins {coins}', fil: 'Cash lamang: pera {notes}, barya {coins}', ceb: 'Cash lang: papel {notes}, sinsilyo {coins}' },
+  range: { en: '{from} to {to}', fil: '{from} hanggang {to}', ceb: '{from} hangtod {to}' },
+  ruleNoChange: { en: 'No change given', fil: 'Walang sukli', ceb: 'Walay sukli' },
+  stepOf: { en: 'Step {n} of 5', fil: 'Hakbang {n} sa 5', ceb: 'Lakang {n} sa 5' },
+  next: { en: 'Next', fil: 'Susunod', ceb: 'Sunod' },
+  back: { en: 'Back', fil: 'Bumalik', ceb: 'Balik' },
+  cancel: { en: 'Cancel', fil: 'Kanselahin', ceb: 'Kanselahon' },
+  clear: { en: 'Clear', fil: 'Burahin', ceb: 'Papasa' },
+  done: { en: 'Done', fil: 'Tapos na', ceb: 'Human na' },
+  utilityTitle: { en: 'Which company is your bill from?', fil: 'Saang kumpanya galing ang iyong bill?', ceb: 'Asa nga kompanya gikan ang imong bill?' },
+  utilityHint: { en: 'The company name is at the top of the bill.', fil: 'Nasa itaas ng bill ang pangalan ng kumpanya.', ceb: 'Naa sa ibabaw sa bill ang ngalan sa kompanya.' },
+  accountTitle: { en: 'Your account number', fil: 'Ang iyong account number', ceb: 'Ang imong account number' },
+  scanTitle: { en: 'Scan the barcode on your bill', fil: 'I-scan ang barcode sa iyong bill', ceb: 'I-scan ang barcode sa imong bill' },
+  scanHint: { en: 'Hold the bill under the red light, below the screen.', fil: 'Itapat ang bill sa pulang ilaw sa ilalim ng screen.', ceb: 'Itapat ang bill sa pula nga suga ilawom sa screen.' },
+  orType: { en: 'or type it on the keypad', fil: 'o i-type sa keypad', ceb: 'o i-type sa keypad' },
+  accountHint: { en: '{n} digits, as printed on the bill.', fil: '{n} numero, gaya ng nakasulat sa bill.', ceb: '{n} ka numero, sama sa nakasulat sa bill.' },
+  accountShort: { en: 'Enter all {n} digits of the {utility} account number. This has {m}.', fil: 'Ilagay ang lahat ng {n} numero ng account number ng {utility}. Ito ay may {m}.', ceb: 'Ibutang ang tanang {n} ka numero sa account number sa {utility}. Kini adunay {m}.' },
+  badScan: { en: 'That barcode is not an account number. Scan the barcode on the bill, or type the number.', fil: 'Hindi account number ang barcode na iyan. I-scan ang barcode sa bill, o i-type ang numero.', ceb: 'Dili account number kana nga barcode. I-scan ang barcode sa bill, o i-type ang numero.' },
+  paidTodayLead: { en: 'Already paid today', fil: 'Nabayaran na ngayong araw', ceb: 'Nabayran na karong adlawa' },
+  paidTodayRest: { en: 'at {time}. Go on only if you mean to pay again.', fil: 'nang {time}. Magpatuloy lamang kung talagang magbabayad ulit.', ceb: 'sa {time}. Padayon lang kon gusto gyud nimo mobayad pag-usab.' },
+  nameTitle: { en: 'Name on the bill', fil: 'Pangalan sa bill', ceb: 'Ngalan sa bill' },
+  nameHint: { en: 'As printed on the bill.', fil: 'Gaya ng nakasulat sa bill.', ceb: 'Sama sa nakasulat sa bill.' },
+  nameNeeded: { en: 'Enter the name on the bill.', fil: 'Ilagay ang pangalan sa bill.', ceb: 'Ibutang ang ngalan sa bill.' },
+  space: { en: 'Space', fil: 'Espasyo', ceb: 'Espasyo' },
+  amountTitle: { en: 'Amount on the bill', fil: 'Halaga sa bill', ceb: 'Kantidad sa bill' },
+  amountHint: { en: 'The amount you are paying for this bill.', fil: 'Ang halagang babayaran mo para sa bill na ito.', ceb: 'Ang kantidad nga imong bayran para niini nga bill.' },
+  amountNeeded: { en: 'Enter the amount, for example 1500.', fil: 'Ilagay ang halaga, halimbawa 1500.', ceb: 'Ibutang ang kantidad, pananglitan 1500.' },
+  reviewTitle: { en: 'Check before you pay', fil: 'Suriin bago magbayad', ceb: 'Susiha una mobayad' },
+  rUtility: { en: 'Company', fil: 'Kumpanya', ceb: 'Kompanya' },
+  rAccount: { en: 'Account number', fil: 'Account number', ceb: 'Account number' },
+  rName: { en: 'Name', fil: 'Pangalan', ceb: 'Ngalan' },
+  rBill: { en: 'Bill amount', fil: 'Halaga ng bill', ceb: 'Kantidad sa bill' },
+  rFee: { en: 'Service fee (VAT included)', fil: 'Service fee (kasama ang VAT)', ceb: 'Service fee (apil ang VAT)' },
+  rTotal: { en: 'Total to insert', fil: 'Kabuuang ihuhulog', ceb: 'Total nga isulod' },
+  reviewNote: { en: 'Once you insert money, the payment cannot be cancelled.', fil: 'Kapag naghulog ka na ng pera, hindi na makakansela ang bayad.', ceb: 'Kon nakasulod na ka og kwarta, dili na makansela ang bayad.' },
+  insertCash: { en: 'Insert cash', fil: 'Maghulog ng cash', ceb: 'Isulod ang cash' },
+  noChangeLong: { en: 'No change is given. Insert the exact amount.', fil: 'Walang sukli. Ihulog ang eksaktong halaga.', ceb: 'Walay sukli. Isulod ang eksaktong kantidad.' },
+  centavosTitle: { en: 'This amount has centavos', fil: 'May sentimo ang halagang ito', ceb: 'Adunay sentimo kini nga kantidad' },
+  centavosText: { en: 'This machine takes coins from {smallest} and gives no change. Pay this bill at a TPPA counter.', fil: 'Barya mula {smallest} lamang ang tinatanggap ng makina, at walang sukli. Bayaran po ang bill na ito sa TPPA counter.', ceb: 'Sinsilyo gikan sa {smallest} lang ang madawat sa makina, ug walay sukli. Palihug bayri kini nga bill sa TPPA counter.' },
+  limitTitle: { en: 'Over the limit for this machine', fil: 'Lampas sa limitasyon ng makinang ito', ceb: 'Molapas sa limitasyon niini nga makina' },
+  limitText: { en: 'Bills over {limit} are paid at a TPPA counter.', fil: 'Ang bill na higit sa {limit} ay binabayaran sa TPPA counter.', ceb: 'Ang bill nga labaw sa {limit} bayran sa TPPA counter.' },
+  cannotPayTitle: { en: 'This bill cannot be paid here', fil: 'Hindi mababayaran dito ang bill na ito', ceb: 'Dili mabayran dinhi kini nga bill' },
+  cannotPayText: { en: 'Pay this bill at a TPPA counter.', fil: 'Bayaran po ang bill na ito sa TPPA counter.', ceb: 'Palihug bayri kini nga bill sa TPPA counter.' },
+  startOver: { en: 'Start over', fil: 'Magsimula ulit', ceb: 'Sugod pag-usab' },
+  insertTitle: { en: 'Insert the exact amount', fil: 'Ihulog ang eksaktong halaga', ceb: 'Isulod ang eksaktong kantidad' },
+  stillToInsert: { en: 'Still to insert', fil: 'Kulang pa', ceb: 'Kulang pa' },
+  inserted: { en: 'Inserted', fil: 'Naihulog na', ceb: 'Nasulod na' },
+  total: { en: 'Total', fil: 'Kabuuan', ceb: 'Total' },
+  acceptedNow: { en: 'Notes accepted now', fil: 'Perang tinatanggap ngayon', ceb: 'Papel nga madawat karon' },
+  coinsNow: { en: 'Coins accepted now', fil: 'Baryang tinatanggap ngayon', ceb: 'Sinsilyo nga madawat karon' },
+  returnedNote: { en: 'That {d} is more than the {left} left. Take it back and use smaller notes or coins.', fil: 'Mas malaki ang {d} kaysa sa {left} na kulang. Kunin ito at gumamit ng mas maliit na pera o barya.', ceb: 'Mas dako ang {d} kaysa {left} nga kulang. Kuhaa kini ug gamita ang mas gamay nga kwarta o sinsilyo.' },
+  cannotCancel: { en: 'Money is in. The payment finishes when the total is in.', fil: 'May naihulog na. Matatapos ang bayad kapag kumpleto na ang halaga.', ceb: 'Naay nasulod na. Mahuman ang bayad kon kompleto na ang kantidad.' },
+  printing: { en: 'Printing your receipt', fil: 'Ipini-print ang iyong resibo', ceb: 'Gi-print ang imong resibo' },
+  doneTitle: { en: 'Paid. Thank you.', fil: 'Bayad na. Salamat.', ceb: 'Bayad na. Salamat.' },
+  doneText: { en: 'Take your receipt from the slot below the screen. Keep it: it is your official receipt.', fil: 'Kunin ang iyong resibo sa ilalim ng screen. Itago ito: ito ang iyong opisyal na resibo.', ceb: 'Kuhaa ang imong resibo ilawom sa screen. Tipigi kini: kini ang imong opisyal nga resibo.' },
+  printFailed: { en: 'The receipt could not be printed. Your payment is recorded under the OR number above: note it down, or take a photo of this screen.', fil: 'Hindi na-print ang resibo. Nakatala ang iyong bayad sa OR number sa itaas: isulat ito, o kunan ng litrato ang screen na ito.', ceb: 'Wala na-print ang resibo. Natala ang imong bayad sa OR number sa ibabaw: isulat kini, o kuhai og litrato kini nga screen.' },
+  creditTextNoSlip: { en: 'Your {amount} is safe. Note the code above: any TPPA counter refunds it with this code, or with the slip if it printed.', fil: 'Ligtas ang iyong {amount}. Isulat ang code sa itaas: ibabalik ito ng alinmang TPPA counter gamit ang code na ito, o ang slip kung na-print.', ceb: 'Luwas ang imong {amount}. Isulat ang code sa ibabaw: ibalik kini sa bisan asang TPPA counter gamit kini nga code, o ang slip kon na-print.' },
+  orNo: { en: 'OR No.', fil: 'OR No.', ceb: 'OR No.' },
+  another: { en: 'Pay another bill', fil: 'Magbayad ng ibang bill', ceb: 'Pagbayad og laing bill' },
+  backToStart: { en: 'Back to the start in {s} s', fil: 'Babalik sa simula sa loob ng {s} s', ceb: 'Mobalik sa sinugdanan sulod sa {s} s' },
+  stillThere: { en: 'Are you still there?', fil: 'Nandiyan ka pa ba?', ceb: 'Naa pa ba ka?' },
+  stillThereText: { en: 'Nothing has been paid. Tap Continue to go on.', fil: 'Wala pang nababayaran. I-tap ang Magpatuloy para ituloy.', ceb: 'Wala pay nabayran. I-tap ang Padayon aron mopadayon.' },
+  continue: { en: 'Continue', fil: 'Magpatuloy', ceb: 'Padayon' },
+  creditTitle: { en: 'Your payment could not be finished', fil: 'Hindi natapos ang iyong bayad', ceb: 'Wala nahuman ang imong bayad' },
+  creditText: { en: 'Your {amount} is safe. Take the slip from below the screen to any TPPA counter to get it back.', fil: 'Ligtas ang iyong {amount}. Dalhin ang slip mula sa ilalim ng screen sa alinmang TPPA counter para makuha ito.', ceb: 'Luwas ang imong {amount}. Dad-a ang slip gikan ilawom sa screen sa bisan asang TPPA counter aron makuha kini.' },
+  resumeTitle: { en: 'Welcome back', fil: 'Maligayang pagbabalik', ceb: 'Maayong pagbalik' },
+  resumeText: { en: 'The power went out. Your {inserted} is saved. Insert the rest to finish.', fil: 'Nawalan ng kuryente. Naka-save ang iyong {inserted}. Ihulog ang kulang para matapos.', ceb: 'Nawala ang kuryente. Na-save ang imong {inserted}. Isulod ang kulang aron mahuman.' },
+  oosTitle: { en: 'Out of service', fil: 'Hindi magagamit', ceb: 'Dili magamit' },
+  oosText: { en: 'This machine cannot take payments right now. Pay at a TPPA counter.', fil: 'Hindi tumatanggap ng bayad ang makinang ito ngayon. Magbayad po sa TPPA counter.', ceb: 'Dili makadawat og bayad kini nga makina karon. Palihug bayad sa TPPA counter.' },
+  nearest: { en: 'Nearest counter', fil: 'Pinakamalapit na counter', ceb: 'Pinakaduol nga counter' },
+}
+
+const t = (key, vars = {}, lang = state.lang) => {
+  const entry = TEXT[key]
+  return (entry[lang] ?? entry.en).replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? '')
+}
+
+/* ------------------------------------------------------------------ state */
+const state = {
+  lang: 'en', screen: 'welcome', utility: UTILITIES[0], account: '', name: '', amount: '',
+  error: null, inserted: [], returned: null, credit: null, paid: null, stop: null,
+  // The live countdowns: the last tap, and when the paid or credit screen came up.
+  idleAt: Date.now(), endedAt: null, restarting: false, payTimer: null, printFail: false, refuse: false,
+  orNext: 78, txn: 78, paper: false, boxFull: false, stale: false, off: false, door: false, jam: false,
+  // Registration reset by head office (same computer, Windows reinstalled): the old key is refused.
+  reset: false, setupCode: '', setupDone: false,
+  staff: null, staffView: 'menu', staffUser: '', staffPass: '', staffErr: null, collected: null, slips: [],
+  // K7: today's receipts and credit slips (for a staff reprint), staff actions recorded today,
+  // what the Reprint and Today screens just printed.
+  history: [], staffLog: [], reprinted: null, readingPrinted: null,
+  // What the cash box holds, counted by the acceptors: notes and coins apart (a 20 note and a 20 coin).
+  box: { note: { 100000: 214, 50000: 96, 20000: 61, 10000: 88, 5000: 52, 2000: 70 }, coin: { 2000: 12, 1000: 75, 500: 61, 100: 140 } },
+}
+const totalDue = () => Math.round(parseFloat(state.amount || '0') * 100) + FEE
+const insertedSum = () => state.inserted.reduce((s, c) => s + c, 0)
+const leftToInsert = () => totalDue() - insertedSum()
+const orStr = (n) => 'K001-' + String(n).padStart(8, '0')
+const outOfService = () => state.paper || state.jam || state.boxFull || state.stale || state.off || state.reset || state.notrec
+/* The payment rules block payments (what a restart checks before it resumes a session). */
+const paymentsBlocked = () => state.stale || state.reset || state.notrec
+const secondsSince = (at) => (Date.now() - at) / 1000
+const stillThere = () => BEFORE_CASH.includes(state.screen) && secondsSince(state.idleAt) >= IDLE_SECONDS
+const stillLeft = () => Math.max(0, Math.ceil(IDLE_SECONDS + STILL_THERE_SECONDS - secondsSince(state.idleAt)))
+const endLeft = () => state.endedAt ? Math.max(0, (state.screen === 'credit' ? CREDIT_SECONDS : DONE_SECONDS) - Math.floor(secondsSince(state.endedAt))) : 0
+const now = () => new Date().toLocaleString('en-PH', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })
+
+/* ------------------------------------------------------------------ frame */
+const logo = (size) => `<svg class="logo" viewBox="0 0 1166 1153" width="${size}" height="${size}" aria-hidden="true">
+  <rect width="1166" height="240"/><rect y="370" width="243" height="783"/><rect x="344" y="240" width="241" height="913"/>
+  <rect x="585" y="370" width="581" height="225"/><rect x="701" y="730" width="465" height="423"/></svg>`
+const icon = {
+  check: '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+  stop: '<svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z M12 9.5v4.5 M12 17.4v.1"/></svg>',
+  slip: '<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z M9 8h6 M9 12h6"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5 M4 9h11a5 5 0 0 1 0 10h-3"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24"><path d="M5 12h14 M13 6l6 6-6 6"/></svg>',
+  bill: '<svg viewBox="0 0 24 24"><path d="M6 2.5h9l3 3v16H6z M9 8h6 M9 11.5h6 M9 15h3 M9 18.5v-.01 M11 18.5v-.01 M13 18.5v-.01"/></svg>',
+  cash: '<svg viewBox="0 0 24 24"><path d="M2.5 6.5h19v11h-19z M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5 M5.5 9.5v5 M18.5 9.5v5"/></svg>',
+}
+/* Only the languages enabled in the settings; the out-of-service screen offers all three. */
+function langSwitch(all = false) {
+  return `<div class="langs" role="group" aria-label="Language">${LANGS.filter(([code]) => all || LANGUAGES.includes(code)).map(([code, label]) => `<button data-lang="${code}" aria-pressed="${state.lang === code}">${label}</button>`).join('')}</div>`
+}
+function progress(step) {
+  const bars = [1, 2, 3, 4, 5].map((n) => `<i class="${n < step ? 'done' : n === step ? 'on' : ''}"></i>`).join('')
+  return `<div class="progress-steps" aria-hidden="true">${bars}</div><span class="progress-label">${t('stepOf', { n: step })}</span>`
+}
+/* Every customer screen: brand, progress and language on top; left and right columns; the
+ * action row at the bottom. `actions` is the right side of the row (Back, Next...). */
+function frame({ step = null, left, right = null, actions = '', cancel = true }) {
+  return `<div class="k">
+    <header class="kbar"><div class="brand">${logo(56)}<b>TPPA Payments</b></div>${step ? progress(step) : ''}${langSwitch()}</header>
+    <main class="kmain ${right === null ? 'single' : ''}"><div class="col">${left}</div>${right === null ? '' : `<div class="col">${right}</div>`}</main>
+    <footer class="kfoot">${cancel ? `<button class="kbtn ghost" data-act="cancel">${t('cancel')}</button>` : ''}<span class="grow"></span>${actions}</footer>
+  </div>`
+}
+const backNext = (nextAct, nextLabel = t('next')) =>
+  `<button class="kbtn" data-act="back">${t('back')}</button><button class="kbtn primary" data-act="${nextAct}">${nextLabel}</button>`
+
+/* ------------------------------------------------------------------ customer screens */
+/* Start: everything in English (no language is chosen yet), the headline also in the other
+ * enabled languages, one start button per enabled language; the cash rules from the settings. */
+function welcomeScreen() {
+  const langs = LANGS.filter(([code]) => LANGUAGES.includes(code))
+  const range = (list) => t('range', { from: denom(list[0]), to: denom(list[list.length - 1]) }, 'en')
+  const also = langs.filter(([code]) => code !== 'en').map(([code]) => `<span lang="${code}">${t('headline', {}, code)}</span>`).join('')
+  const steps = ['step1', 'step2', 'step3', 'step4'].map((k, i) => `<li><span class="n">${i + 1}</span>${t(k, {}, 'en')}</li>`).join('')
+  const go = (code) => `<button class="go" data-start="${code}"><span><b>${t('startIn', {}, code)}</b><span>${t('startHint', {}, code)}</span></span>${icon.arrow}</button>`
+  return `<div class="start">
+    <div class="start-left">
+      <div class="brand">${logo(72)}<div><b>TPPA Payments</b><span>${t('brandLine', {}, 'en')}</span></div></div>
+      <div class="headline"><h1>${t('headline', {}, 'en')}</h1><div class="also">${also}</div></div>
+      <div class="bring"><div>${icon.bill}${t('bringBill', {}, 'en')}</div><div>${icon.cash}${t('bringCash', {}, 'en')}</div></div>
+      <ol class="steps4">${steps}</ol>
+    </div>
+    <div class="start-right">
+      <p class="ask">Choose your language to start<span>Pumili ng wika &middot; Pilia ang pinulongan</span></p>
+      ${langs.map(([code]) => go(code)).join('')}
+    </div>
+    <div class="rules">
+      <span class="item"><i></i>${t('ruleCash', { notes: range(NOTES), coins: range(COINS) }, 'en')}</span>
+      <span class="warn-item">${t('ruleNoChange', {}, 'en')}</span>
+      <span class="companies">${UTILITIES.map((u) => `<span>${u.code}</span>`).join('')}</span>
+    </div>
+  </div>`
+}
+function utilityScreen() {
+  const tiles = UTILITIES.map((u, i) => `<button class="tile" data-utility="${i}"><span class="code">${u.code}</span><span class="nm">${u.name}</span></button>`).join('')
+  return frame({ step: 1, left: `<h1>${t('utilityTitle')}</h1><p class="sub">${t('utilityHint')}</p>`, right: `<div class="tiles">${tiles}</div>` })
+}
+function keypad(withPoint) {
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', withPoint ? '.' : 'clear', '0', 'del']
+  return `<div class="keypad">${keys.map((k) => k === 'del' ? '<button class="fn" data-key="del" aria-label="Delete">⌫</button>'
+    : k === 'clear' ? `<button class="fn" data-key="clear">${t('clear')}</button>` : `<button data-key="${k}">${k}</button>`).join('')}</div>`
+}
+function accountScreen() {
+  const u = state.utility, d = state.account
+  const paid = d.length === u.digits && PAID_TODAY[d]
+  const left = `<h1>${t('accountTitle')}</h1>
+    <div class="scan"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 14V8h6M36 8h6v6M42 34v6h-6M12 40H6v-6M14 16v16M19 16v16M23 16v16M28 16v16M33 16v16"/></svg>
+      <div><b>${t('scanTitle')}</b><span class="hint">${t('scanHint')}</span></div></div>
+    <div class="or">${t('orType')}</div>
+    <div class="entry ${d ? '' : 'placeholder'} ${state.error ? 'invalid' : ''}" aria-live="polite">${d ? u.mask(d) : u.mask('0'.repeat(u.digits)).replace(/0/g, '#')}</div>
+    ${state.error ? `<p class="err" role="alert">${state.error}</p>` : `<p class="hint">${t('accountHint', { n: u.digits })}</p>`}
+    ${paid ? `<div class="callout warn"><b>${t('paidTodayLead')}</b> ${t('paidTodayRest', { time: paid })}</div>` : ''}`
+  return frame({ step: 2, left, right: keypad(false), actions: backNext('account-next') })
+}
+const KEYBOARD = ['QWERTYUIOP', 'ASDFGHJKLÑ', 'ZXCVBNM.-']
+function nameScreen() {
+  const rows = KEYBOARD.map((r) => `<div class="row">${[...r].map((c) => `<button data-char="${c}">${c}</button>`).join('')}</div>`).join('')
+  const top = `<div class="name-top"><div><h1>${t('nameTitle')}</h1>${state.error ? `<p class="err" role="alert">${state.error}</p>` : `<p class="hint">${t('nameHint')}</p>`}</div>
+    <div class="entry name ${state.name ? '' : 'placeholder'} ${state.error ? 'invalid' : ''}">${state.name ? esc(state.name) : 'JUAN DELA CRUZ'}</div></div>`
+  const keyboard = `<div class="keyboard">${rows}<div class="row"><button class="fn" data-char="del" aria-label="Delete">⌫</button><button class="space" data-char=" ">${t('space')}</button><button class="fn" data-char="clear">${t('clear')}</button></div></div>`
+  return frame({ step: 3, left: top + keyboard, actions: backNext('name-next') })
+}
+function amountScreen() {
+  const a = state.amount
+  const left = `<h1>${t('amountTitle')}</h1>
+    <div class="entry ${a ? '' : 'placeholder'} ${state.error ? 'invalid' : ''}">${PESO} ${a || '0.00'}</div>
+    ${state.error ? `<p class="err" role="alert">${state.error}</p>` : `<p class="hint">${t('amountHint')}</p>`}
+    <div class="no-change"><i>!</i>${t('noChangeLong')}</div>`
+  return frame({ step: 4, left, right: keypad(true), actions: backNext('amount-next') })
+}
+function reviewScreen() {
+  const row = (label, value) => `<div class="row"><span>${label}</span><b>${value}</b></div>`
+  const bill = totalDue() - FEE
+  const left = `<h1>${t('reviewTitle')}</h1>
+    <div class="review">${row(t('rUtility'), state.utility.name)}${row(t('rAccount'), `<span style="font-family:var(--mono)">${state.utility.mask(state.account)}</span>`)}
+      ${row(t('rName'), esc(state.name))}${row(t('rBill'), fmt(bill))}${row(t('rFee'), fmt(FEE))}</div>`
+  const right = `<div class="total-box"><div class="lbl">${t('rTotal')}</div><div class="val">${fmt(totalDue())}</div></div>
+    <div class="no-change"><i>!</i>${t('noChangeLong')}</div>
+    <p class="hint">${t('reviewNote')}</p>`
+  return frame({ step: 5, left, right, actions: backNext('to-insert', t('insertCash')) })
+}
+/* Message screens: one badge, the words, the actions. */
+function message({ badge, title, text, extra = '', actions = '', cancel = false }) {
+  return frame({ left: `<div class="message" style="height:100%"><div class="badge ${badge[0]}">${badge[1]}</div>
+    <div class="text"><h1>${title}</h1><p class="sub">${text}</p>${extra}</div></div>`, actions, cancel })
+}
+/* A stop before any cash (design sections 5, 8). Nothing is recorded. Centavos or over the limit:
+ * from the review, with its total and Back. Any other refusal (a bad bill, out of service since
+ * the start): "cannot be paid here", straight from the amount step, no total, no Back. */
+function stopScreen() {
+  const s = state.stop, withTotal = s === 'centavos' || s === 'limit'
+  return message({ badge: ['warn', icon.stop],
+    title: t(s === 'centavos' ? 'centavosTitle' : s === 'limit' ? 'limitTitle' : 'cannotPayTitle'),
+    text: s === 'centavos' ? t('centavosText', { smallest: denom(SMALLEST) }) : s === 'limit' ? t('limitText', { limit: fmt(LIMIT) }) : t('cannotPayText'),
+    extra: withTotal ? `<p class="sub" style="font-family:var(--mono)">${t('rTotal')}: ${fmt(totalDue())}</p>` : '',
+    actions: `${withTotal ? `<button class="kbtn" data-act="back">${t('back')}</button>` : ''}<button class="kbtn primary" data-act="cancel">${t('startOver')}</button>` })
+}
+function denomChip(c, coin) {
+  const fits = c <= leftToInsert()
+  return `<span class="denom ${coin ? 'coin' : ''} ${fits ? '' : 'off'}" aria-label="${fmt(c)} ${fits ? 'accepted' : 'not accepted now'}">${PESO}${(c / 100).toLocaleString('en-PH')}</span>`
+}
+function insertScreen() {
+  const left = leftToInsert(), total = totalDue(), done = left === 0
+  const kept = state.inserted.length > 0
+  const pct = Math.round((insertedSum() / total) * 100)
+  const leftCol = `<h1>${t('insertTitle')}</h1>
+    <div class="total-box ${done ? 'done' : ''}"><div class="lbl">${done ? t('printing') : t('stillToInsert')}</div>
+      <div class="val" aria-live="polite">${fmt(left)}</div>
+      <div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+      <div class="money-row"><span>${t('inserted')} <b>${fmt(insertedSum())}</b></span><span>${t('total')} <b>${fmt(total)}</b></span></div></div>
+    ${kept ? `<p class="hint">${t('cannotCancel')}</p>` : ''}`
+  const rightCol = `${state.returned ? `<div class="returned" role="alert">${icon.back}<span>${t('returnedNote', { d: fmt(state.returned), left: fmt(left) })}</span></div>` : ''}
+    <div class="denoms"><h2>${t('acceptedNow')}</h2><div class="denom-row">${NOTES.map((c) => denomChip(c, false)).join('')}</div>
+      <h2>${t('coinsNow')}</h2><div class="denom-row">${COINS.map((c) => denomChip(c, true)).join('')}</div></div>
+    <div class="no-change"><i>!</i>${t('noChangeLong')}</div>`
+  return frame({ left: leftCol, right: rightCol, cancel: !kept })
+}
+/* Paid: never "take your receipt" when none came out (the payment stands; staff reprint it). */
+function doneScreen() {
+  return message({ badge: ['ok', icon.check], title: t('doneTitle'), text: state.paid.printed ? t('doneText') : t('printFailed'),
+    extra: `<p class="big-or">${t('orNo')} ${state.paid.or}</p><p class="countdown">${t('backToStart', { s: endLeft() })}</p>`,
+    actions: `<button class="kbtn" data-act="another">${t('another')}</button><button class="kbtn primary" data-act="cancel">${t('done')}</button>` })
+}
+/* A credit: the code stays up longer (60 s), so the customer can note it down. With no slip, or
+ * shown again after a restart (the kiosk cannot tell whether it printed), the code is enough. */
+function creditScreen() {
+  const amount = { amount: fmt(state.credit.amount) }
+  return message({ badge: ['warn', icon.slip], title: t('creditTitle'), text: state.credit.printed ? t('creditText', amount) : t('creditTextNoSlip', amount),
+    extra: `<p class="big-or">${state.credit.code}</p><p class="countdown">${t('backToStart', { s: endLeft() })}</p>`,
+    actions: `<button class="kbtn primary" data-act="cancel">${t('done')}</button>` })
+}
+function resumeScreen() {
+  return message({ badge: ['ok', icon.check], title: t('resumeTitle'), text: t('resumeText', { inserted: fmt(insertedSum()) }),
+    actions: `<button class="kbtn primary" data-act="resume">${t('continue')}</button>` })
+}
+function outOfServiceScreen() {
+  return `<div class="k oos">
+    <header class="kbar"><div class="brand">${logo(56)}<b>TPPA Payments</b></div>${langSwitch(true)}</header>
+    <main class="kmain single"><div class="message" style="height:100%"><div class="badge bad">${icon.stop}</div>
+      <div class="text"><h1>${t('oosTitle')}</h1><p class="sub">${t('oosText')}</p>
+        <div class="branch">${t('nearest')}: <b>TPPA Digos 0001</b>, Rizal Ave.</div></div></div></main>
+    <footer class="kfoot"></footer></div>`
+}
+function outOfServiceOverlay() {
+  return `<div class="overlay" style="z-index:6" role="alertdialog" aria-labelledby="oos-title"><div class="card" style="box-shadow:inset 0 10px 0 var(--bad),0 20px 60px rgba(0,0,0,.3)">
+    <h1 id="oos-title">${t('oosTitle')}</h1><p class="sub">${t('oosText')}</p>
+    <p class="hint">${t('nearest')}: <b>TPPA Digos 0001</b>, Rizal Ave.</p>
+    <button class="kbtn primary" data-act="cancel">${t('startOver')}</button></div></div>`
+}
+function stillThereOverlay() {
+  return `<div class="overlay" role="dialog" aria-labelledby="st-title"><div class="card">
+    <h1 id="st-title">${t('stillThere')}</h1><p class="sub">${t('stillThereText')}</p>
+    <button class="kbtn primary" data-act="still-here">${t('continue')}</button>
+    <p class="countdown">${t('backToStart', { s: stillLeft() })}</p></div></div>`
+}
+
+/* ------------------------------------------------------------------ staff mode (English only)
+ * Opens only while the service door is open, then asks for a staff sign-in (design sections 10, 11). */
+function staffFrame(left, right = null, actions = '') {
+  return `<div class="k staff">
+    <header class="kbar"><div class="brand">${logo(52)}<b>Staff mode</b></div><span style="font-size:24px;color:var(--ink-3)">Kiosk 01 &middot; SM Lanang &middot; Digos 0001</span><span class="door">Service door open</span></header>
+    <main class="kmain ${right === null ? 'single' : ''}"><div class="col">${left}</div>${right === null ? '' : `<div class="col">${right}</div>`}</main>
+    <footer class="kfoot"><span class="hint">${state.staff ? `Signed in: <b>${esc(state.staff)}</b>. ` : ''}Close the service door to leave staff mode.</span><span class="grow"></span>
+      ${state.staff ? '<button class="kbtn" data-act="staff-signout">Sign out</button>' : ''}${actions}</footer></div>`
+}
+function staffSignIn() {
+  return staffFrame(`<h1>Sign in</h1><p class="sub">A kiosk custodian, branch manager or admin, with their own username and password.</p>`,
+    `<div class="panel"><div class="field"><label>Username</label><div class="entry name">${esc(state.staffUser) || '&nbsp;'}</div></div>
+      <div class="field"><label>Password</label><div class="entry name">${'•'.repeat(state.staffPass.length) || '&nbsp;'}</div></div>
+      ${state.staffErr ? `<p class="err">${state.staffErr}</p>` : ''}
+      <p class="hint">Mock-up: the first button types a username and a password.</p></div>`,
+    '<button class="kbtn" data-act="staff-type">Type custodian1</button><button class="kbtn primary" data-act="staff-signin">Sign in</button>')
+}
+const boxEntries = () => Object.entries(state.box).flatMap(([kind, counts]) => Object.entries(counts).map(([d, n]) => ({ kind, value: Number(d), n })))
+const boxTotal = () => boxEntries().reduce((s, e) => s + e.value * e.n, 0)
+/* What stops the kiosk now, each with what to do (K7); "Check again" reads the devices again. */
+function faults() {
+  const out = []
+  if (state.jam) out.push({ what: 'Note acceptor: a note is jammed.', fix: 'Open the acceptor, take the note out, close it.', act: 'staff-check', label: 'Check again' })
+  if (state.paper) out.push({ what: 'Printer: the paper roll is near its end.', fix: 'Load a new 80 mm roll.', act: 'staff-paper', label: 'Load paper' })
+  if (state.boxFull) out.push({ what: 'Cash box at its limit.', fix: 'Swap the cash box.', act: 'staff-collect', label: 'Collect cash' })
+  if (state.stale) out.push({ what: 'Settings older than 36 hours: it cannot reach head office.', fix: 'Check the network cable. It syncs by itself once online.', act: 'staff-check', label: 'Check again' })
+  if (state.off) out.push({ what: 'Taken out of service.', fix: 'Bring it back when the kiosk is ready.', act: 'staff-service', label: 'Bring back' })
+  return out
+}
+function staffMenu() {
+  const st = (label, value, tone) => `<div class="state ${tone}"><div class="lbl">${label}</div><div class="v">${value}</div></div>`
+  const box = boxTotal(), pct = Math.min(100, Math.round((box / BOX_LIMIT) * 100)), list = faults()
+  const meter = `<div class="field"><label>Cash box: ${fmt(box)} of ${fmt(BOX_LIMIT)} (${pct} %)</label>
+        <div class="meter-bar"><i style="width:${pct}%;background:${pct >= 90 ? 'var(--bad)' : pct >= 75 ? 'var(--warn)' : 'var(--ok)'}"></i></div></div>`
+  // Something to fix: the list takes the place of the device states (they say the same); else the states.
+  const left = list.length
+    ? `<div class="panel fixes" data-testid="fixes"><h2>What needs fixing</h2>
+        ${list.map((x) => `<div class="fix"><div><b>${x.what}</b><span>${x.fix}</span></div><button class="kbtn" data-act="${x.act}">${x.label}</button></div>`).join('')}${meter}</div>`
+    : `<div class="panel"><h2>Kiosk state</h2><div class="state-grid">
+      ${st('Service', 'In service', 'ok')}${st('Network', 'Online, all synced', 'ok')}
+      ${st('Printer', 'Ready', 'ok')}${st('Note acceptor', 'Ready', 'ok')}</div>${meter}
+      <p class="sub" style="font-size:24px;margin:0" data-testid="fixes">Nothing to fix: every device is ready.</p></div>`
+  const right = `<div class="staff-menu">
+      <button class="kbtn" data-act="staff-collect">Collect cash<span>Swap the cash box</span></button>
+      <button class="kbtn" data-act="staff-paper">Load paper<span>New roll, test receipt</span></button>
+      <button class="kbtn" data-act="staff-reprint">Reprint<span>A receipt or credit slip</span></button>
+      <button class="kbtn" data-act="staff-today">Today<span>Figures and the day end</span></button>
+      <button class="kbtn" data-act="staff-test">Test the acceptors<span>Insert a note: it is returned</span></button>
+      <button class="kbtn" data-act="staff-service">${state.off ? 'Bring back into service' : 'Take out of service'}<span>Head office can too</span></button></div>`
+  return staffFrame(left, right)
+}
+/* Today's receipts and credit slips, newest first; a copy prints marked REPRINTED, and is recorded. */
+function staffReprint() {
+  const row = (h, i) => h.kind === 'receipt'
+    ? `<tr><td>${h.time}</td><td>OR ${h.item.or}<br><span class="muted">${esc(h.item.name)} &middot; ${h.item.utility.mask(h.item.account)}</span></td><td class="num">${fmt(h.item.bill + FEE)}</td><td class="num"><button class="kbtn" data-act="staff-reprint-item" data-i="${i}">Reprint</button></td></tr>`
+    : `<tr><td>${h.time}</td><td>Credit ${h.item.code}<br><span class="muted">Not an official receipt</span></td><td class="num">${fmt(h.item.amount)}</td><td class="num"><button class="kbtn" data-act="staff-reprint-item" data-i="${i}">Reprint</button></td></tr>`
+  const done = state.reprinted ? `<p class="ok-note" role="status">Printed: ${state.reprinted}, marked REPRINTED.</p>` : ''
+  return staffFrame(`<h1>Reprint</h1><p class="sub">Today's receipts and credit slips, newest first. The copy prints marked REPRINTED, and head office is told.</p>${done}`,
+    `<div class="panel"><table class="box reprints">${state.history.length ? state.history.map(row).join('') : '<tr><td>Nothing printed at this kiosk today.</td></tr>'}</table></div>`,
+    '<button class="kbtn" data-act="staff-menu">Back</button>')
+}
+/* The day's figures; the day ends by itself at midnight (Manila) with its Z-reading. */
+function staffToday() {
+  const f = todayFigures()
+  const fig = (l, v) => `<tr><td>${l}</td><td></td><td class="num">${v}</td></tr>`
+  const done = state.readingPrinted ? `<p class="ok-note" role="status">Printed: ${state.readingPrinted}.</p>` : ''
+  const log = state.staffLog.slice(0, 5).map((x) => `<li><b>${x.time}</b> ${esc(x.text)} <span class="muted">(${esc(x.who)})</span></li>`).join('')
+  return staffFrame(`<h1>Today</h1><p class="sub">The day closes by itself at 12:00 midnight (Manila): the kiosk records its Z-reading and head office receives it. There is no drawer to count: the cash is counted when it is collected.</p>
+      <div class="panel"><h2>${f.date}, so far</h2><table class="box">${fig('Payments', f.n)}${fig('Collected', fmt(f.total))}${fig('Kiosk credits', f.credits + ' (' + fmt(f.creditTotal) + ')')}${fig('In the cash box', fmt(boxTotal()))}</table></div>${done}`,
+    `<div class="panel"><h2>Last day closed</h2><p class="sub" style="font-size:26px">${YESTERDAY.date}: ${YESTERDAY.n} payments, ${fmt(YESTERDAY.total)}. Closed at midnight, by itself.</p></div>
+      <div class="panel"><h2>Recorded today</h2>${log ? `<ul class="log">${log}</ul>` : '<p class="sub" style="font-size:24px">No staff actions yet today.</p>'}</div>`,
+    '<button class="kbtn" data-act="staff-menu">Back</button><button class="kbtn" data-act="staff-print-z">Print its Z-reading</button><button class="kbtn primary" data-act="staff-print-x">Print today so far</button>')
+}
+/* After a reset: only Collect cash and Set up again. The cash comes out first, so its slip and count
+ * are recorded (kept with the set-aside file) before the new setup starts a fresh local database. */
+function staffReset() {
+  const box = boxTotal()
+  const left = `<h1>This kiosk was reset</h1>
+    <p class="sub">Head office reset the registration of kiosk 01 at 10:42 AM today. It cannot take payments until it is set up again with the new one-time code.</p>
+    <div class="panel"><h2>Before you set it up</h2>
+      <p class="sub" style="font-size:26px">${box ? `The cash box holds <b>${fmt(box)}</b>. Collect it first.` : 'The cash box is empty. Everything was sent to head office.'}</p></div>`
+  const right = `<div class="staff-menu">
+      <button class="kbtn" data-act="staff-collect"${box ? '' : ' disabled'}>Collect cash<span>Swap the cash box</span></button>
+      <button class="kbtn${box ? '' : ' primary'}" data-act="staff-setup"${box ? ' disabled' : ''}>Set up again<span>${box ? 'Collect the cash first' : 'With the new one-time code'}</span></button></div>`
+  return staffFrame(left, right)
+}
+/* The server answers but does not know this kiosk (N2): what IT needs to compare with the
+ * console, then a new one-time code (N3), once the cash is collected. */
+function staffNotRecognised() {
+  const box = boxTotal()
+  const fact = (term, value) => `<tr><td>${term}</td><td class="num" style="font-family:var(--mono);font-size:22px">${value}</td></tr>`
+  const left = `<h1>The server does not recognise this kiosk</h1>
+    <p class="sub">The server at https://pos.tppa.example has no kiosk 01: it may be the wrong server, or its database was replaced. Payments are stopped.</p>
+    <div class="panel"><table class="box">${fact('Terminal', '01 (kiosk)')}${fact('Terminal ID', '7d2e...4b10')}${fact('Device key', '71bd0c3e...e04f')}${fact('Last synced', 'Nov 7, 4:12 PM')}${fact('Not sent', 'Nothing')}</table>
+      <p class="hint">IT: compare these with the console (Terminals, kiosk 01, Device keys), then get a new one-time code.</p></div>`
+  const right = `<div class="staff-menu">
+      <button class="kbtn" data-act="staff-collect"${box ? '' : ' disabled'}>Collect cash<span>${box ? `${fmt(box)} in the box` : 'The box is empty'}</span></button>
+      <button class="kbtn${box ? '' : ' primary'}" data-act="staff-setup"${box ? ' disabled' : ''}>Set up with a new code<span>${box ? 'Collect the cash first' : 'Checked with the server first'}</span></button></div>`
+  return staffFrame(left, right)
+}
+function staffSetup() {
+  if (state.setupDone) {
+    return staffFrame(`<h1>Kiosk 01 is ready</h1><p class="sub">Settings downloaded. OR numbers continue at <b>${orStr(state.orNext)}</b>, the next one head office knows.</p>`, null,
+      '<button class="kbtn primary" data-act="staff-menu">Back to the menu</button>')
+  }
+  return staffFrame(`<h1>Set up again</h1><p class="sub">Enter the one-time code the administrator got from the console. A new key is created on this kiosk and never leaves it.</p>`,
+    `<div class="panel"><div class="field"><label>One-time code</label><div class="entry name">${esc(state.setupCode) || '&nbsp;'}</div></div>
+      <p class="hint">Mock-up: the first button types the code.</p></div>`,
+    '<button class="kbtn" data-act="staff-menu">Back</button><button class="kbtn" data-act="setup-type">Type M4TW-8HQZ-2KDN</button><button class="kbtn primary" data-act="setup-register">Register</button>')
+}
+function staffCollect() {
+  const rows = boxEntries().map((e) => `<tr><td>${fmt(e.value)} ${e.kind}</td><td class="num">&times; ${e.n}</td><td class="num">${fmt(e.value * e.n)}</td></tr>`).join('')
+  if (state.collected) {
+    return staffFrame(`<h1>Cash collected</h1><p class="sub">The slip is printed: put it in the box's bag. The box is counted at the office and the count entered in the console.</p>`,
+      `<div class="panel"><table class="box"><tr class="total"><td>Expected in the box</td><td></td><td class="num">${fmt(state.collected)}</td></tr></table></div>`,
+      '<button class="kbtn primary" data-act="staff-menu">Back to the menu</button>')
+  }
+  return staffFrame(`<h1>Collect cash</h1><p class="sub">1. Unlock and take out the full box.<br>2. Put in an empty box and lock it.<br>3. Confirm here: the slip prints.</p>`,
+    `<div class="panel"><h2>In the box, counted by the acceptors</h2><table class="box">${rows}<tr class="total"><td>Expected</td><td></td><td class="num">${fmt(boxTotal())}</td></tr></table></div>`,
+    '<button class="kbtn" data-act="staff-menu">Back</button><button class="kbtn primary" data-act="staff-collected">Box swapped: print the slip</button>')
+}
+function staffPaper() {
+  return staffFrame(`<h1>Load paper</h1><p class="sub">Load a new 80 mm roll, close the printer, then print a test receipt.</p>`, null,
+    '<button class="kbtn" data-act="staff-menu">Back</button><button class="kbtn primary" data-act="staff-loaded">Roll loaded: print a test</button>')
+}
+
+/* ------------------------------------------------------------------ thermal roll (K6)
+ * The kiosk's receipts on its thermal roll (ESC/POS), the same code in the console and kiosk
+ * mock-ups. A layout is the roll's width and the header and footer lines the kiosk prints (no
+ * pre-printed form: the BIR texts come from the layout). The body is fixed, with the labels of
+ * the counter receipt. Styles: n normal, b bold, l large (double width and height: half as many
+ * characters). Placeholders come from the kiosk's details in the console.
+ */
+const THERMAL_SAMPLE = { branch: 'Digos 0001', kiosk: '05', serial: 'MXL9988TQ', permit: 'FP112026-123-0000005-00000' }
+const THERMAL_DEFAULT = {
+  widthMm: 80,
+  header: [
+    { t: 'TRANS PILIPINAS', a: 'c', s: 'l' },
+    { t: 'Power & Automation Inc.', a: 'c', s: 'b' },
+    { t: 'Building 1, Quimpo Compound', a: 'c', s: 'n' },
+    { t: 'Jail Road Maa, Davao City, Philippines', a: 'c', s: 'n' },
+    { t: 'VAT REG. TIN 120001', a: 'c', s: 'n' },
+    { t: 'Tel. (082) 233-4688  www.tppainc.com', a: 'c', s: 'n' },
+    { t: '{branch}  Kiosk {kiosk}  SN {serial}', a: 'c', s: 'n' },
+  ],
+  footer: [
+    { t: 'THIS IS A SYSTEM GENERATED', a: 'c', s: 'b', on: 'receipt' },
+    { t: 'ACKNOWLEDGEMENT RECEIPT.', a: 'c', s: 'b', on: 'receipt' },
+    { t: 'BIR Permit {permit}', a: 'c', s: 'n', on: 'receipt' },
+    { t: 'Thank you for paying at TPPA.', a: 'c', s: 'n', on: 'all' },
+  ],
+}
+const thermalCols = (L) => (L.widthMm === 58 ? 32 : 48)
+const thermalFill = (t, v = THERMAL_SAMPLE) => t.replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m))
+/* Problems a layout has: a line too long for the roll, an unknown placeholder. */
+function thermalIssues(L) {
+  const cols = thermalCols(L), out = []
+  for (const [part, list] of [['Header', L.header], ['Footer', L.footer]]) {
+    list.forEach((l, i) => {
+      const room = l.s === 'l' ? cols / 2 : cols, text = thermalFill(l.t)
+      const unknown = (l.t.match(/\{(\w+)\}/g) || []).filter((p) => !(p.slice(1, -1) in THERMAL_SAMPLE))
+      if (unknown.length) out.push({ part, i, msg: part + ' line ' + (i + 1) + ': ' + unknown.join(', ') + ' is not a placeholder.' })
+      else if (text.length > room) out.push({ part, i, msg: part + ' line ' + (i + 1) + ' is ' + text.length + ' characters; ' + (l.s === 'l' ? 'a large line fits ' : 'a line fits ') + room + ' on ' + L.widthMm + ' mm.' })
+    })
+  }
+  return out
+}
+/* A slip as styled lines, as the kiosk prints it. */
+function thermalSlip(L, kind, d) {
+  const cols = thermalCols(L), rule = { t: '-'.repeat(cols) }, out = []
+  const wrap = (text, s) => { const words = text.split(' '); let line = ''; for (const w of words) { if ((line + ' ' + w).trim().length > cols) { out.push({ t: line, s }); line = w } else line = (line + ' ' + w).trim() } if (line) out.push({ t: line, s }) }
+  const pair = (label, value, lw, s) => {
+    value = String(value ?? '')
+    const head = label.padEnd(lw) + ': '
+    if (head.length + value.length <= cols) out.push({ t: head + value, s })
+    else { out.push({ t: head.trimEnd(), s }); out.push({ t: value.padStart(cols), s }) }
+  }
+  const money = (label, value, s) => {
+    const lw = cols === 48 ? 22 : 18, head = label.padEnd(lw) + ': '
+    out.push({ t: head + value.padStart(cols - head.length), s })
+  }
+  for (const l of L.header) out.push({ t: thermalFill(l.t, d.place), a: l.a, s: l.s })
+  out.push(rule)
+  if (kind === 'receipt') {
+    pair('Account ID', d.account, 15); pair('Name', d.name, 15); pair('Payment Method', 'Cash', 15)
+    pair('Date', d.date, 15); pair('Transaction Id', d.or, 15); pair('Received by', 'Kiosk ' + d.place.kiosk, 15)
+    if (d.reprint) out.push({ t: 'REPRINTED', s: 'b' })
+    out.push(rule)
+    money('VAT Sales', d.total); money('Non-VAT Sales', '0.00'); money('VAT Zero Related Sales', '0.00'); money('VAT Amount', '0.00')
+    money('BIR 2306', '0.00'); money('ADVANCE', '0.00'); money('Total', d.total, 'b'); money('Amount Received', d.total); money('Amount Change', '0.00')
+  } else if (kind === 'credit') {
+    out.push({ t: 'KIOSK CREDIT', a: 'c', s: 'l' }, { t: 'NOT AN OFFICIAL RECEIPT', a: 'c', s: 'b' }, rule)
+    out.push({ t: d.code, a: 'c', s: 'l' })
+    pair('Amount held', d.amount, 15, 'b'); pair('Date', d.date, 15); pair('Kiosk', d.place.kiosk + '  ' + d.place.branch, 15); pair('Reason', d.reason, 15)
+    out.push({ t: '' }); wrap('Bring this slip to any TPPA counter to get this amount back in cash. Keep it safe: the code is your proof.')
+  } else {
+    out.push({ t: 'CASH COLLECTION', a: 'c', s: 'l' }, { t: 'NOT AN OFFICIAL RECEIPT', a: 'c', s: 'b' }, rule)
+    pair('Date', d.date, 15); pair('Kiosk', d.place.kiosk + '  ' + d.place.branch, 15); pair('Collected by', d.staff, 15)
+    pair('Expected in box', d.amount, 15, 'b')
+    out.push({ t: '' }); wrap('Count the cash box at the counter. A difference is reported to head office.')
+  }
+  out.push(rule)
+  for (const l of L.footer) if (l.on === 'all' || kind === 'receipt') out.push({ t: thermalFill(l.t, d.place), a: l.a, s: l.s })
+  return out
+}
+/* The roll as paper: monospace, the large lines twice the size, a torn edge where it is cut. */
+function thermalRollHtml(lines, cols, label) {
+  return '<div class="roll" role="img" aria-label="' + (label || 'Thermal receipt') + '" style="--cols:' + cols + '">' +
+    lines.map((l) => '<div class="rl a-' + (l.a || 'l') + ' s-' + (l.s || 'n') + '">' + (esc(l.t) || '&nbsp;') + '</div>').join('') + '</div>'
+}
+const THERMAL_CSS = `
+.roll { --rf: 12px; position: relative; width: calc(var(--cols) * 1ch + 28px); box-sizing: border-box; padding: 16px 14px 22px; background: #fffefb; color: #1c2530; font: var(--rf)/1.45 var(--mono); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(28,37,48,.12); }
+.roll::after { content: ''; position: absolute; left: 0; right: 0; bottom: -7px; height: 8px; background: linear-gradient(-45deg, transparent 5px, #fffefb 0) 0 0 / 10px 8px repeat-x, linear-gradient(45deg, transparent 5px, #fffefb 0) 0 0 / 10px 8px repeat-x; }
+.roll .rl { white-space: pre; overflow: hidden; }
+.roll .a-c { text-align: center; } .roll .a-r { text-align: right; }
+.roll .s-b { font-weight: 700; }
+.roll .s-l { font-size: 2em; line-height: 1.2; font-weight: 700; }
+`
+/* The kiosk prints its slips from the approved thermal layout (Receipt layout, Thermal roll). */
+const KIOSK_ROLL = THERMAL_DEFAULT
+const plainAmount = (c) => (c / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+/* "Thu Nov 05 2026 15:38:07" in Manila, as on the counter receipt. */
+function receiptDate(at = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short', year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(at).map((x) => [x.type, x.value]))
+  return p.weekday + ' ' + p.month + ' ' + p.day + ' ' + p.year + ' ' + p.hour + ':' + p.minute + ':' + p.second
+}
+const receiptSlip = (p, reprint = false) => thermalSlip(KIOSK_ROLL, 'receipt', { place: THERMAL_SAMPLE, account: p.utility.mask(p.account), name: p.name, date: p.receiptDate || receiptDate(), or: p.or, total: plainAmount(p.bill + FEE), reprint })
+function creditSlip(c, reprint = false) {
+  const lines = thermalSlip(KIOSK_ROLL, 'credit', { place: THERMAL_SAMPLE, code: c.code, amount: plainAmount(c.amount), date: c.receiptDate || receiptDate(), reason: c.reason || 'No new cash for 3 minutes' })
+  // A copy says so under the title, as a reprinted receipt does.
+  if (reprint) lines.splice(lines.findIndex((l) => l.t === 'NOT AN OFFICIAL RECEIPT') + 1, 0, { t: 'REPRINTED', a: 'c', s: 'b' })
+  return lines
+}
+const collectionSlip = (amount) => thermalSlip(KIOSK_ROLL, 'collection', { place: THERMAL_SAMPLE, amount: plainAmount(amount), date: receiptDate(), staff: state.staff })
+const rollRule = () => ({ t: '-'.repeat(thermalCols(KIOSK_ROLL)) })
+const shortTime = () => new Date().toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })
+/* The day's figures, X (so far) or Z (the day closed by itself at midnight), not an official receipt. */
+function readingSlip(kind, f) {
+  const cols = thermalCols(KIOSK_ROLL)
+  const pair = (l, v, s) => ({ t: (l.padEnd(15) + ': ' + v).slice(0, cols), s })
+  const money = (l, v, s) => { const head = l.padEnd(22) + ': '; return { t: head + v.padStart(cols - head.length), s } }
+  return [...KIOSK_ROLL.header.map((l) => ({ ...l, t: thermalFill(l.t) })), rollRule(),
+    { t: kind === 'Z' ? 'Z-READING' : 'X-READING', a: 'c', s: 'l' }, { t: kind === 'Z' ? 'Day closed' : 'Today so far', a: 'c', s: 'b' },
+    { t: 'NOT AN OFFICIAL RECEIPT', a: 'c', s: 'b' }, rollRule(),
+    pair('Business date', f.date), pair('Kiosk', THERMAL_SAMPLE.kiosk + '  ' + THERMAL_SAMPLE.branch), pair('First OR', f.first), pair('Last OR', f.last),
+    pair('Payments', String(f.n)), pair('Voided', '0'), rollRule(),
+    money('VAT Sales', plainAmount(f.total)), money('Non-VAT Sales', '0.00'), money('VAT Zero Related Sales', '0.00'), money('VAT Amount', '0.00'),
+    money('Total', plainAmount(f.total), 'b'), rollRule(),
+    money('Kiosk credits issued', f.credits + ' (' + plainAmount(f.creditTotal) + ')'), money('Cash taken', plainAmount(f.total + f.creditTotal), 'b'),
+    ...(kind === 'Z' ? [pair('Closed', f.closedAt), { t: 'Closed by the kiosk at midnight.', a: 'c' }] : [pair('Printed', receiptDate())]), rollRule(),
+    ...KIOSK_ROLL.footer.filter((l) => l.on === 'all').map((l) => ({ ...l, t: thermalFill(l.t) }))]
+}
+/* Today before this visit (synthetic): 36 payments and a credit since midnight; yesterday, closed. */
+const EARLIER = { n: 36, total: 5421075, credits: 1, creditTotal: 70000, firstSeq: 42 }
+const YESTERDAY = { date: 'Sat Nov 07 2026', first: orStr(1), last: orStr(41), n: 41, total: 6421000, credits: 0, creditTotal: 0, closedAt: 'Sun Nov 08 2026 00:00:00' }
+function todayFigures() {
+  const paid = state.history.filter((h) => h.kind === 'receipt'), credits = state.history.filter((h) => h.kind === 'credit')
+  return {
+    date: receiptDate().slice(0, 15), first: orStr(EARLIER.firstSeq), last: orStr(state.orNext - 1),
+    n: EARLIER.n + paid.length, total: EARLIER.total + paid.reduce((t, h) => t + h.item.bill + FEE, 0),
+    credits: EARLIER.credits + credits.length, creditTotal: EARLIER.creditTotal + credits.reduce((t, h) => t + h.item.amount, 0),
+  }
+}
+/* Every staff action is recorded (an event, sent to head office). */
+const logStaff = (text) => state.staffLog.unshift({ time: shortTime(), who: state.staff, text })
+function print(lines) {
+  state.slips.unshift(lines)
+  $('#m-slips').innerHTML = state.slips.slice(0, 4).map((s) => thermalRollHtml(s, thermalCols(KIOSK_ROLL), 'Printed slip')).join('')
+  mockDock.printed()
+}
+
+/* ------------------------------------------------------------------ render */
+function screenHtml() {
+  if (state.door) return state.staff ? { menu: state.reset ? staffReset : state.notrec ? staffNotRecognised : staffMenu, collect: staffCollect, paper: staffPaper, setup: staffSetup, reprint: staffReprint, today: staffToday }[state.staffView]() : staffSignIn()
+  // Out of service: the start screen gives way; on a step before cash the screen is covered and
+  // what was typed is kept (it comes back if the kiosk does); once cash is in, nothing changes.
+  if (outOfService() && state.screen === 'welcome') return outOfServiceScreen()
+  const covered = outOfService() && ['utility', 'account', 'name', 'amount', 'review', 'stop'].includes(state.screen)
+  const screens = { welcome: welcomeScreen, utility: utilityScreen, account: accountScreen, name: nameScreen, amount: amountScreen,
+    review: reviewScreen, stop: stopScreen, insert: insertScreen, done: doneScreen, credit: creditScreen, resume: resumeScreen }
+  return screens[state.screen]() + (covered ? outOfServiceOverlay() : '') + (stillThere() ? stillThereOverlay() : '')
+}
+let shown = ''
+function render() {
+  shown = screenHtml()
+  $('#screen').innerHTML = shown
+  document.documentElement.lang = state.lang
+}
+/* The live countdowns: redraw when what the screen shows changes; at zero, back to the start. */
+function tick() {
+  if (state.restarting) return
+  if (stillThere() && stillLeft() === 0) { resetSession(); return render() }
+  if (['done', 'credit'].includes(state.screen) && state.endedAt && endLeft() === 0) { resetSession(); return render() }
+  if (screenHtml() !== shown) render()
+}
+function fit() {
+  const h = $('#housing'), stage = h.parentElement
+  const scale = Math.min((stage.clientWidth - 40) / h.offsetWidth, (stage.clientHeight - 40) / h.offsetHeight)
+  h.style.transform = `translate(-50%, -50%) scale(${scale})`
+}
+
+/* ------------------------------------------------------------------ actions */
+function resetSession() {
+  clearTimeout(state.payTimer)
+  Object.assign(state, { screen: 'welcome', lang: 'en', utility: UTILITIES[0], account: '', name: '', amount: '', error: null, inserted: [], returned: null, credit: null, paid: null, stop: null, idleAt: Date.now(), endedAt: null, payTimer: null })
+}
+function go(screen) {
+  state.screen = screen; state.error = null; state.returned = null
+  if (screen === 'done' || screen === 'credit') state.endedAt = Date.now()
+  render()
+}
+/* The printer: the mock-up control makes the next print fail (the screen then says so). */
+function printSlip(text) {
+  if (state.printFail) { state.printFail = $('#m-printfail').checked = false; return false }
+  print(text)
+  return true
+}
+function start(lang) { state.lang = lang; go(UTILITIES.length > 1 ? 'utility' : 'account') }
+function accountNext() {
+  const u = state.utility, n = state.account.length
+  if (n !== u.digits) { state.error = t('accountShort', { utility: u.name, n: u.digits, m: n }); return render() }
+  go('name')
+}
+function amountNext() {
+  const v = state.amount
+  if (!v || !/^\d+(\.\d{0,2})?$/.test(v) || parseFloat(v) <= 0) { state.error = t('amountNeeded'); return render() }
+  // Refused with no total (a bad bill, out of service since the start): stop straight away.
+  if (state.refuse) { state.refuse = $('#m-refuse').checked = false; state.stop = 'cannot'; return go('stop') }
+  go('review')
+}
+function toInsert() {
+  const total = totalDue()
+  if (total % 100 !== 0) { state.stop = 'centavos'; return go('stop') }
+  if (total > LIMIT) { state.stop = 'limit'; return go('stop') }
+  go('insert')
+}
+/* A note or coin from the acceptor: kept only if it fits what is left; else returned from escrow. */
+function insertCash(c, kind) {
+  if (state.door || state.screen !== 'insert' || leftToInsert() <= 0) return
+  if (c > leftToInsert()) { state.returned = c; return render() }
+  state.returned = null
+  state.inserted.push(c) // KIOSK_CASH_IN, journaled before the payment exists
+  state.box[kind][c] = (state.box[kind][c] ?? 0) + 1
+  render()
+  if (leftToInsert() === 0) state.payTimer = setTimeout(recordPayment, 900)
+}
+function recordPayment() {
+  state.payTimer = null
+  const bill = totalDue() - FEE
+  state.paid = { or: orStr(state.orNext++), txn: 'K1' + String(state.txn++).padStart(8, '0'), date: now(), utility: state.utility, account: state.account, name: state.name, bill }
+  state.paid.printed = printSlip(receiptSlip(state.paid))
+  state.history.unshift({ kind: 'receipt', time: shortTime(), item: state.paid })
+  go('done')
+}
+/* The cash in becomes a credit (ABANDONED after 3 min, INTERRUPTED after a restart while payments are blocked). */
+function issueCredit() {
+  state.credit = { code: 'KC-' + Math.random().toString(36).slice(2, 8).toUpperCase(), amount: insertedSum(), date: now() }
+  state.credit.printed = printSlip(creditSlip(state.credit)) // KIOSK_CREDIT_ISSUED: an exception and an alert at head office
+  state.history.unshift({ kind: 'credit', time: shortTime(), item: state.credit })
+  go('credit')
+}
+/* No new cash for 3 minutes: with cash in, a credit; without, the session times out (back to the start). */
+function abandon() {
+  if (state.screen !== 'insert' || leftToInsert() <= 0) return
+  if (!state.inserted.length) { resetSession(); return render() }
+  issueCredit()
+}
+function typeKey(k) {
+  const field = state.screen === 'account' ? 'account' : 'amount'
+  let v = state[field]
+  if (k === 'del') v = v.slice(0, -1)
+  else if (k === 'clear') v = ''
+  else if (field === 'account') v = (v + k).slice(0, state.utility.digits)
+  else if (k === '.' ? !v.includes('.') : !/\.\d{2}$/.test(v)) v = (v + k).replace(/^0+(?=\d)/, '')
+  state[field] = v; state.error = null; render()
+}
+function typeChar(c) {
+  if (c === 'del') state.name = state.name.slice(0, -1)
+  else if (c === 'clear') state.name = ''
+  else if (state.name.length < 50) state.name = (state.name + c).replace(/^ /, '').replace(/ {2,}/g, ' ')
+  state.error = null; render()
+}
+const BACK = { utility: 'welcome', account: UTILITIES.length > 1 ? 'utility' : 'welcome', name: 'account', amount: 'name', review: 'amount', stop: 'review' }
+const ACTIONS = {
+  cancel: () => { resetSession(); render() },
+  back: () => go(BACK[state.screen]),
+  'account-next': accountNext,
+  'name-next': () => { if (!state.name.trim()) { state.error = t('nameNeeded'); return render() } go('amount') },
+  'amount-next': amountNext,
+  'to-insert': toInsert,
+  another: () => { const lang = state.lang; resetSession(); start(lang) },
+  resume: () => go('insert'),
+  'still-here': () => { state.idleAt = Date.now(); render() },
+  'staff-type': () => { state.staffUser = 'custodian1'; state.staffPass = 'password'; render() },
+  'staff-signin': () => { if (!state.staffUser) { state.staffErr = 'Enter your username and password.'; return render() } state.staff = 'Rey Cruz'; state.staffView = 'menu'; state.staffErr = null; logStaff('Signed in, service door open'); render() },
+  'staff-signout': () => { state.staff = null; state.staffUser = state.staffPass = ''; render() },
+  'staff-menu': () => { state.staffView = 'menu'; state.collected = null; state.setupDone = false; state.reprinted = state.readingPrinted = null; render() },
+  'staff-reprint': () => { state.staffView = 'reprint'; state.reprinted = null; render() },
+  'staff-reprint-item': (el) => {
+    const h = state.history[Number(el.dataset.i)]
+    print(h.kind === 'receipt' ? receiptSlip(h.item, true) : creditSlip(h.item, true))
+    state.reprinted = h.kind === 'receipt' ? 'OR ' + h.item.or : 'credit slip ' + h.item.code
+    logStaff('Reprinted ' + state.reprinted); render()
+  },
+  'staff-today': () => { state.staffView = 'today'; state.readingPrinted = null; render() },
+  'staff-print-x': () => { print(readingSlip('X', todayFigures())); state.readingPrinted = 'today so far (X-reading)'; logStaff('Printed today so far'); render() },
+  'staff-print-z': () => { print(readingSlip('Z', YESTERDAY)); state.readingPrinted = 'the Z-reading of ' + YESTERDAY.date; logStaff('Printed the Z-reading of ' + YESTERDAY.date); render() },
+  'staff-check': () => { if (state.jam) logStaff('Note acceptor jam cleared'); state.jam = $('#m-jam').checked = false; render() },
+  'staff-setup': () => { if (boxTotal()) return; state.staffView = 'setup'; state.setupCode = ''; render() },
+  'setup-type': () => { state.setupCode = 'M4TW-8HQZ-2KDN'; render() },
+  'setup-register': () => { if (!state.setupCode) return; state.reset = $('#m-reset').checked = false; state.notrec = $('#m-notrec').checked = false; state.setupDone = true; render() },
+  'staff-collect': () => { state.staffView = 'collect'; render() },
+  'staff-collected': () => { state.collected = boxTotal(); print(collectionSlip(state.collected)); logStaff('Cash collected: ' + fmt(state.collected) + ' expected'); Object.values(state.box).forEach((counts) => Object.keys(counts).forEach((d) => (counts[d] = 0))); state.boxFull = $('#m-box').checked = false; render() },
+  'staff-paper': () => { state.staffView = 'paper'; render() },
+  'staff-loaded': () => { state.paper = $('#m-paper').checked = false; logStaff('Paper loaded, test printed'); print([...KIOSK_ROLL.header.map((l) => ({ ...l, t: thermalFill(l.t) })), rollRule(), { t: 'TEST PRINT', a: 'c', s: 'l' }, { t: receiptDate(), a: 'c' }, { t: 'New roll loaded. Not a receipt.', a: 'c' }, rollRule()]); state.staffView = 'menu'; render() },
+  'staff-test': () => (logStaff('Acceptors tested'), render()) || print([{ t: 'ACCEPTOR TEST', a: 'c', s: 'b' }, rollRule(), { t: 'Note acceptor'.padEnd(46) + 'OK' }, { t: 'Coin acceptor'.padEnd(46) + 'OK' }, rollRule()]),
+  'staff-service': () => { state.off = $('#m-off').checked = !state.off; logStaff(state.off ? 'Took it out of service' : 'Brought it back into service'); render() },
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act],[data-lang],[data-start],[data-utility],[data-key],[data-char],[data-mock],[data-cash]')
+  if (!el) return
+  const d = el.dataset
+  if (d.start) return start(d.start)
+  if (d.lang) { state.lang = d.lang; return render() }
+  if (d.utility) { state.utility = UTILITIES[Number(d.utility)]; state.account = ''; return go('account') }
+  if (d.key) return typeKey(d.key)
+  if (d.char) return typeChar(d.char)
+  if (d.cash) return insertCash(Number(d.cash), d.kind)
+  if (d.mock) return MOCK[d.mock](el)
+  ACTIONS[d.act]?.(el)
+})
+
+/* ------------------------------------------------------------------ mock-up controls */
+const MOCK = {
+  scan: (el) => {
+    if (state.screen !== 'account' || state.door) return
+    const code = el.dataset.code
+    if (code.length !== state.utility.digits) { state.error = t('badScan'); return render() }
+    // A keyboard-mode scanner types: a key press, so it counts as activity too.
+    state.account = code; state.error = null; state.idleAt = Date.now(); render()
+  },
+  // As if nobody had tapped for the settings' idleSeconds: the overlay, then 15 s more.
+  idle: () => { if (BEFORE_CASH.includes(state.screen)) { state.idleAt = Date.now() - IDLE_SECONDS * 1000; render() } },
+  abandon,
+  /* A restart rebuilds an open session from the kiosk's records: no cash in, it times out
+   * (the start screen); payments blocked, the cash becomes a credit (INTERRUPTED); the total
+   * already in, it is paid; else it resumes. A credit that just ended is shown again (with its code) until Done; any other ended
+   * session's screen is not. */
+  power: () => {
+    // On the credit screen (or within 10 minutes of it, until Done): the same credit is shown
+    // again after the restart, with the code; it is not issued again.
+    if (state.screen === 'credit') {
+      const credit = { ...state.credit, printed: false }
+      state.restarting = true
+      $('#screen').innerHTML = '<div class="k"><div></div><p class="sub" style="text-align:center">Restarting&hellip;</p></div>'
+      return setTimeout(() => { state.restarting = false; state.credit = credit; go('credit') }, 900)
+    }
+    const open = state.screen === 'insert'
+    const cash = open && state.inserted.length > 0
+    clearTimeout(state.payTimer); state.payTimer = null
+    const next = !cash ? null : paymentsBlocked() ? issueCredit : leftToInsert() <= 0 ? recordPayment : () => go('resume')
+    if (!next) resetSession()
+    state.restarting = true
+    $('#screen').innerHTML = '<div class="k"><div></div><p class="sub" style="text-align:center">Restarting&hellip;</p></div>'
+    setTimeout(() => { state.restarting = false; next ? next() : render() }, 900)
+  },
+  translations: () => {
+    const old = $('.review-tr'); if (old) return old.remove()
+    const rows = Object.entries(TEXT).map(([k, v]) => `<tr><td><code>${k}</code></td><td>${v.en}</td><td>${v.fil}</td><td>${v.ceb}</td></tr>`).join('')
+    document.body.insertAdjacentHTML('beforeend', `<div class="review-tr" role="dialog" aria-label="Texts for review"><p><b>Every text a customer sees</b>, for review. Filipino and Cebuano are drafts. Click the button again to close.</p>
+      <table><thead><tr><th>Key</th><th>English</th><th>Filipino (draft)</th><th>Cebuano (draft)</th></tr></thead><tbody>${rows}</tbody></table></div>`)
+  },
+}
+$('#m-notes').innerHTML = NOTES.map((c) => `<button class="note" data-cash="${c}" data-kind="note">${fmt(c)}</button>`).join('')
+$('#m-coins').innerHTML = COINS.map((c) => `<button class="coin" data-cash="${c}" data-kind="coin">${fmt(c)}</button>`).join('')
+const toggle = (id, key) => $(id).addEventListener('change', (e) => { state[key] = e.target.checked; if (key === 'door' && !state.door) { state.staff = null; state.staffView = 'menu' } render() })
+toggle('#m-paper', 'paper'); toggle('#m-box', 'boxFull'); toggle('#m-stale', 'stale'); toggle('#m-off', 'off'); toggle('#m-door', 'door'); toggle('#m-reset', 'reset'); toggle('#m-notrec', 'notrec')
+toggle('#m-jam', 'jam'); toggle('#m-printfail', 'printFail'); toggle('#m-refuse', 'refuse')
+// Every tap on the kiosk screen, and every key, puts "Are you still there?" off again.
+$('#screen').addEventListener('pointerdown', () => { state.idleAt = Date.now() })
+window.addEventListener('keydown', () => { state.idleAt = Date.now() })
+
+/* The dock: folded or not and the tab, kept in localStorage; a new slip shows a count on Printer. */
+const mockDock = (() => {
+  const key = 'tppa-kiosk-mock-panel', tabs = ['hw', 'sit', 'time', 'print', 'help']
+  let saved = {}, unseen = 0
+  try { saved = JSON.parse(localStorage.getItem(key) || '{}') } catch {}
+  const save = () => { try { localStorage.setItem(key, JSON.stringify(saved)) } catch {} }
+  const badge = () => {
+    for (const id of ['#mock-badge', '#mock-badge-rail']) { $(id).hidden = unseen === 0; $(id).textContent = unseen }
+  }
+  const setOpen = (open) => {
+    saved.open = open; save()
+    document.documentElement.classList.toggle('mock-folded', !open)
+    $('#mock-open').setAttribute('aria-expanded', String(open))
+    requestAnimationFrame(fit)
+  }
+  const setTab = (tab, focus) => {
+    saved.tab = tab; save()
+    for (const t of tabs) {
+      const on = t === tab
+      $('#mt-' + t).setAttribute('aria-selected', String(on)); $('#mt-' + t).tabIndex = on ? 0 : -1; $('#mp-' + t).hidden = !on
+    }
+    if (tab === 'print') { unseen = 0; badge() }
+    if (focus) $('#mt-' + tab).focus()
+  }
+  $('#mock-open').addEventListener('click', () => { setOpen(true); $('#mt-' + (saved.tab || 'hw')).focus() })
+  $('#mock-close').addEventListener('click', () => { setOpen(false); $('#mock-open').focus() })
+  for (const t of tabs) $('#mt-' + t).addEventListener('click', () => setTab(t))
+  $('.mock-tabs').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+    e.preventDefault()
+    const i = tabs.indexOf(saved.tab || 'hw')
+    setTab(tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length], true)
+  })
+  setTab(saved.tab || 'hw'); setOpen(saved.open !== false)
+  return { printed: () => { if (saved.tab !== 'print' || saved.open === false) { unseen++; badge() } } }
+})()
+window.addEventListener('resize', fit)
+setInterval(tick, 250)
+render(); fit()
+</script>
+</body>
+</html>
