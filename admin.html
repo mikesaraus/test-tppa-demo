@@ -7,6 +7,8 @@
 <!--
   INTERACTIVE MOCK-UP for the console setup screens. Throwaway: not part of the app.
   Update (2026-11-08): brought up to the console as built (Daily work, System, kiosks, sync).
+  Update (2026-11-11, user guides page mock-up): Help, User guides: the guides for your role as PDF,
+  your own first; super admins and admins see every guide.
   Update (2026-11-11, console design mock-up): the menu with an icon per page and counts where work
   waits, the person at its foot; the Overview with the day ledger, attention by urgency, totals.
   Update (2026-11-11, kiosks page improvement): a register toolbar with counts, Needs someone now,
@@ -128,6 +130,21 @@ p { margin: 0; text-wrap: pretty; }
 .me-who { display: flex; align-items: center; gap: 10px; }
 .me-who b { display: block; font-weight: 600; } .me-who span:not(.avatar) { font-size: 12px; color: var(--ink-3); }
 .avatar { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--meter-soft); color: var(--meter); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+/* User guides: the reader's own guide first, then the others as cards. */
+.guide-as { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; } .guide-as select { height: 30px; width: auto; }
+.gown { margin-bottom: 16px; }
+.gcard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; padding: 16px; }
+.gcard.own { box-shadow: inset 3px 0 0 var(--meter), var(--lift); }
+.gcover { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 92px; border-radius: var(--r-sm); background: var(--meter-soft); color: var(--meter); }
+.gcover svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.gcover span { font-size: 10px; font-weight: 700; letter-spacing: .1em; }
+.gbody h3 { margin: 0 0 2px; font-size: 15px; font-weight: 600; text-transform: none; letter-spacing: -0.005em; color: var(--ink); } .gbody p { margin: 0; }
+.geyebrow { display: block; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--meter); margin-bottom: 2px; }
+.gabout { margin-top: 8px !important; font-size: 13px; color: var(--ink-2); }
+.gact { display: flex; gap: 6px; margin-top: 12px; }
+.gtools { margin-bottom: 14px; }
+.ggrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+@media (max-width: 520px) { .gcard { grid-template-columns: 1fr; } .gcover { height: 56px; flex-direction: row; } }
 /* The overview: the day ledger, then what needs attention beside today by branch. */
 .ohead { align-items: center; }
 h2.sec { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
@@ -747,6 +764,7 @@ const NAV = [
   ['group', 'Daily work'], ['daily', 'Daily report'], ['collection-files', 'Collection files'], ['exceptions', 'Exceptions'], ['kiosks', 'Kiosks'],
   ['group', 'Records'], ['audit', 'Audit log'],
   ['group', 'System'], ['alerts', 'Alert emails'],
+  ['group', 'Help'], ['guides', 'User guides'],
 ];
 /* 16 px line icons, one stroke weight, drawn for this console (no icon font). */
 const ICON = {
@@ -763,6 +781,7 @@ const ICON = {
   kiosks: '<rect x="4" y="2" width="8" height="12" rx="1.2"/><path d="M6 4.5h4v3H6zM6.5 10.5h3"/>',
   audit: '<path d="M4 2.5h8v11H4z"/><path d="M6 5.5h4M6 8h4M6 10.5h2.5"/>',
   alerts: '<path d="M4.5 11V7.5a3.5 3.5 0 0 1 7 0V11l1 1.2h-9z"/><path d="M6.8 13.6a1.4 1.4 0 0 0 2.4 0"/>',
+  guides: '<path d="M3 3.5c1.8-.8 3.5-.8 5 .5 1.5-1.3 3.2-1.3 5-.5v9c-1.8-.8-3.5-.8-5 .5-1.5-1.3-3.2-1.3-5-.5z"/><path d="M8 4v9"/>',
 };
 /* What waits behind a page, shown as a count in the menu (the same lists the pages show). */
 function navCount(k) {
@@ -2171,6 +2190,43 @@ function about() {
 
 state.terminals.filter((t) => t.kind === 'KIOSK' && !t.kiosk).forEach((t) => (t.kiosk = JSON.parse(JSON.stringify(term('05').kiosk))));
 
+/* ------------------------------------------------------------------ help: user guides */
+/* The guides (docs/user-guides), each for some roles; super admins and admins see every one.
+ * The PDF opens only for a role it is for: the API checks it, the page only lists. */
+const GUIDES = [
+  { id: 'overview', title: 'Overview and first steps', for: 'Everyone', pages: 10, mb: 0.6, roles: 'ALL', about: 'What TPPA Payments is, the roles, a day in the life, the words used, security basics.' },
+  { id: 'super-admin', title: 'Super admin guide', for: 'The owner', pages: 16, mb: 1.1, roles: [], about: 'Two-step sign-in and recovery, administrators, who may reset whom, responsibilities.' },
+  { id: 'admin', title: 'Admin guide', for: 'Head-office administrators', pages: 86, mb: 8.9, roles: [], about: 'Branches, users, terminals and OR series, kiosks, fees, receipt layouts, daily work, audit, alerts.' },
+  { id: 'accounting', title: 'Accounting guide', for: 'Accounting', pages: 45, mb: 4.8, roles: ['ACCOUNTING'], about: 'Daily report, collection files, exceptions, fee and layout drafts, counting kiosk boxes.' },
+  { id: 'branch-manager', title: 'Branch manager guide', for: 'Branch managers', pages: 33, mb: 3.6, roles: ['BRANCH_MANAGER'], about: 'Approvals at the counter, the branch&#39;s daily work and kiosks, a daily checklist.' },
+  { id: 'teller', title: 'Teller guide', for: 'Tellers', pages: 60, mb: 6.6, roles: ['TELLER', 'BRANCH_MANAGER'], about: 'The teller app from the opening float to the day end: payments, reprints, voids, refunds.' },
+  { id: 'kiosk-custodian', title: 'Kiosk custodian guide', for: 'Kiosk custodians', pages: 25, mb: 1.9, roles: ['KIOSK_CUSTODIAN', 'BRANCH_MANAGER'], about: 'Staff mode: cash collection, paper, reprints, readings, faults, out of service.' },
+  { id: 'kiosk', title: 'Kiosk guide', for: 'Staff who help kiosk customers', pages: 30, mb: 2.4, roles: ['KIOSK_CUSTODIAN', 'BRANCH_MANAGER', 'TELLER'], about: 'Paying at a kiosk in three languages, every case a customer can meet, the printed slips.' },
+  { id: 'troubleshooting', title: 'Troubleshooting guide', for: 'Everyone', pages: 37, mb: 2.6, roles: 'ALL', about: 'Symptom, check, fix and who to call, for the console, the teller app and the kiosk.' },
+  { id: 'it-setup', title: 'IT and set-up guide', for: 'IT', pages: 20, mb: 1.8, roles: [], about: 'The server, the first super admin, installing and registering terminals, resets, backups.' },
+];
+/* Each role's own guide, shown first. */
+const OWN_GUIDE = { SUPER_ADMIN: 'super-admin', ADMIN: 'admin', ACCOUNTING: 'accounting', BRANCH_MANAGER: 'branch-manager', TELLER: 'teller', KIOSK_CUSTODIAN: 'kiosk-custodian' };
+const HEAD_OFFICE = ['SUPER_ADMIN', 'ADMIN'];
+const guidesFor = (role) => GUIDES.filter((g) => HEAD_OFFICE.includes(role) || g.roles === 'ALL' || g.roles.includes(role));
+function guideCard(g, own) {
+  return '<article class="sheet gcard' + (own ? ' own' : '') + '" aria-label="' + g.title + '"><div class="gcover" aria-hidden="true"><svg viewBox="0 0 16 16">' + ICON.guides + '</svg><span>PDF</span></div>' +
+    '<div class="gbody">' + (own ? '<span class="geyebrow">Your guide</span>' : '') + '<h3>' + g.title + '</h3><p class="small muted">For ' + g.for + ' &middot; ' + g.pages + ' pages &middot; ' + g.mb.toFixed(1) + ' MB</p><p class="gabout">' + g.about + '</p>' +
+    '<div class="gact"><button class="btn sm' + (own ? ' primary' : '') + '" onclick="toast(\'Opens ' + g.title + ' in a new tab.\')">Open</button><button class="btn sm ghost" onclick="toast(\'Downloads ' + g.title + '.pdf\')">Download</button></div></div></article>';
+}
+function guides() {
+  const role = state.guidesAs || state.user.role, list = guidesFor(role), own = list.find((g) => g.id === OWN_GUIDE[role]);
+  const q = (state.guideQ || '').trim().toLowerCase();
+  const rest = list.filter((g) => g !== own && (!q || (g.title + ' ' + g.for + ' ' + g.about).toLowerCase().includes(q)));
+  const head_ = HEAD_OFFICE.includes(role);
+  return head('User guides', head_ ? 'Every guide, for every role: head office sees them all. Each opens as a PDF.' : 'The guides for your role, as PDF. Head office has the rest.') +
+    '<div class="callout info guide-as">Mock-up only: see the page as <select aria-label="See as" onchange="state.guidesAs=this.value;render()">' + Object.keys(OWN_GUIDE).map((r) => '<option value="' + r + '"' + (r === role ? ' selected' : '') + '>' + ROLE[r] + '</option>').join('') + '</select></div>' +
+    (own && !q ? '<div class="gown">' + guideCard(own, true) + '</div>' : '') +
+    '<div class="sheet record-tools gtools"><input type="search" aria-label="Search guides" placeholder="Search guides" value="' + esc(state.guideQ || '') + '" oninput="state.guideQ=this.value;render()"><span class="record-count">' + list.length + ' guide' + (list.length > 1 ? 's' : '') + (head_ ? ' (all)' : ' for ' + ROLE[role]) + '</span></div>' +
+    (rest.length ? '<div class="ggrid">' + rest.map((g) => guideCard(g, false)).join('') + '</div>' : '<div class="sheet pad muted">No guide matches.</div>') +
+    '<p class="small muted" style="margin-top:12px">The screenshots in the guides come from a demonstration system: every name, account and amount in them is made up. The guides match this version of TPPA Payments.</p>';
+}
+
 /* ------------------------------------------------------------------ router */
 function render() {
   const route = (location.hash.replace(/^#\//, '') || 'signin');
@@ -2179,7 +2235,7 @@ function render() {
   if (name === 'signin' || (!state.signedIn && !['2fa', '2fa-setup', 'about'].includes(name))) { app.innerHTML = signIn(); return; }
   if (name === '2fa') { app.innerHTML = twoFactor(); return; }
   if (name === '2fa-setup') { app.innerHTML = twoFactorSetup(); return; }
-  const screens = { overview, branches, users, terminals, utilities, billers: utilities, fees, receipt, daily, 'collection-files': collectionFiles, exceptions, audit, alerts, about, terminal: () => terminalDetail(arg), kiosks: kiosksPage, kiosk: () => kioskPage(arg) };
+  const screens = { overview, branches, users, terminals, utilities, billers: utilities, fees, receipt, daily, 'collection-files': collectionFiles, exceptions, audit, alerts, about, guides, terminal: () => terminalDetail(arg), kiosks: kiosksPage, kiosk: () => kioskPage(arg) };
   const navKey = name === 'kiosk' ? 'kiosks' : name === 'terminal' ? 'terminals' : name === 'billers' ? 'utilities' : name;
   app.innerHTML = shell(navKey, (screens[name] || overview)());
   if (name === 'receipt') { rf(); thRefresh(); }
