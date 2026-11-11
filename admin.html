@@ -7,6 +7,10 @@
 <!--
   INTERACTIVE MOCK-UP for the console setup screens. Throwaway: not part of the app.
   Update (2026-11-08): brought up to the console as built (Daily work, System, kiosks, sync).
+  Update (2026-11-11, console design mock-up): the menu with an icon per page and counts where work
+  waits, the person at its foot; the Overview with the day ledger, attention by urgency, totals.
+  Update (2026-11-11, kiosks page improvement): a register toolbar with counts, Needs someone now,
+  cards or a list, and filtered cash collections.
   Update (2026-11-09, K8 mock-up): the Kiosks page (each kiosk now, Take out of service, the office
   count of a collected box), the kiosk exceptions and checks, kiosk notices by email.
   Update (2026-11-11): branch register and utility catalog, with focused record drawers and
@@ -108,6 +112,45 @@ p { margin: 0; text-wrap: pretty; }
   color: var(--ink-2); text-decoration: none; font-weight: 500; }
 .nav a:hover { background: var(--hover); color: var(--ink); }
 .nav a.on { background: var(--sheet); color: var(--ink); box-shadow: var(--lift); }
+/* The menu: an icon per page, the active page marked by a meter-blue rail; counts where work waits. */
+.nav a { justify-content: flex-start; gap: 10px; position: relative; }
+.nav a svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-3); }
+.nav a:hover svg, .nav a.on svg { color: var(--ink); }
+.nav a.on svg { color: var(--meter); }
+.nav a.on::before { content: ""; position: absolute; left: -12px; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: var(--meter); }
+.nav .nl { flex: 1; min-width: 0; }
+.ncount { min-width: 20px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.ncount.bad { background: var(--stamp-soft); color: var(--stamp-ink); } .ncount.wait { background: var(--scheduled-soft); color: var(--scheduled-ink); } .ncount.blue { background: var(--meter-soft); color: var(--meter-ink); }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand .mark { width: 28px; height: 28px; flex: none; }
+.brand .mark rect { fill: var(--meter); } .brand .mark path { fill: none; stroke: var(--on-accent); stroke-width: 2.2; stroke-linecap: round; }
+.me { display: flex; flex-direction: column; gap: 10px; }
+.me-who { display: flex; align-items: center; gap: 10px; }
+.me-who b { display: block; font-weight: 600; } .me-who span:not(.avatar) { font-size: 12px; color: var(--ink-3); }
+.avatar { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--meter-soft); color: var(--meter); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+/* The overview: the day ledger, then what needs attention beside today by branch. */
+.ohead { align-items: center; }
+h2.sec { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.ledger { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 24px; }
+.ledger .lg { display: flex; flex-direction: column; gap: 2px; padding: 16px 20px; border-left: 1px solid var(--rule); }
+.ledger .lg:first-child { border-left: 0; }
+.ledger .l { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.ledger .v { font: 600 24px/1.2 var(--mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.ledger .s { font-size: 12px; color: var(--ink-3); }
+.ogrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.ogrid > * { min-width: 0; }
+@media (max-width: 560px) { .ledger .v { font-size: 19px; } .ledger .lg { padding: 12px 14px; } }
+.agroup h3 { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 20px 4px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.agroup h3 .muted { font-weight: 500; }
+.adot { width: 7px; height: 7px; border-radius: 50%; }
+.adot.bad { background: var(--stamp); } .adot.wait { background: var(--scheduled); } .adot.blue { background: var(--meter); } .adot.off { background: var(--ink-4); }
+.agroup + .agroup { border-top: 1px solid var(--rule); }
+.attention a { grid-template-columns: 120px minmax(0, 1fr) auto; padding: 10px 20px; border-bottom: 0; }
+.attention .go { font-size: 15px; color: var(--ink-3); transition: transform .15s; }
+.attention a:hover .go { color: var(--meter); transform: translateX(2px); }
+tr.total td { font-weight: 600; background: var(--sheet-2); border-top: 1px solid var(--rule-2); }
+@media (max-width: 900px) { .ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ledger .lg:nth-child(3) { border-left: 0; } .ledger .lg:nth-child(n+3) { border-top: 1px solid var(--rule); } }
+@media (max-width: 560px) { .attention a { grid-template-columns: minmax(0, 1fr) auto; } .attention a > span:first-child { grid-column: 1 / -1; } }
 .me { margin-top: auto; padding: 10px; border-top: 1px solid var(--rule); font-size: 13px; }
 .me b { display: block; font-weight: 600; }
 .me button { margin-top: 6px; }
@@ -333,8 +376,6 @@ legend { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 
 .linkbtn:hover { text-decoration: underline; }
 .record-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid var(--rule); }
 .record-tools input { width:min(280px,100%); }
-.record-summary { display:flex; flex-wrap:wrap; gap:8px 24px; padding:0 2px 14px; color:var(--ink-3); font-size:12px; }
-.record-summary b { color:var(--ink); font-size:14px; font-weight:600; }
 .record-filters { display:inline-flex; gap:2px; padding:3px; border:1px solid var(--rule); border-radius:7px; background:var(--sheet-2); }
 .record-filters button { min-height:28px; padding:0 10px; border:0; border-radius:4px; background:transparent; color:var(--ink-2); cursor:pointer; font-size:12px; }
 .record-filters button[aria-pressed="true"] { background:var(--sheet); color:var(--ink); box-shadow:var(--lift); }
@@ -346,7 +387,8 @@ legend { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 
 .record-table { min-width:760px; }
 .record-name { display:block; font-weight:600; }
 .record-code { display:block; color:var(--ink-3); font:12px var(--mono); }
-.code-lock { display:inline-flex; align-items:center; gap:4px; margin-left:7px; color:var(--ink-3); font-size:11px; }
+.code-lock { display:inline-flex; align-items:center; margin-left:7px; color:var(--ink-3); vertical-align:-2px; }
+.code-lock svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.5; }
 .record-preview { color:var(--ink-3); font:12px var(--mono); white-space:nowrap; }
 .record-panel { margin-top:14px; overflow:hidden; }
 .record-panel-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px; padding:18px 20px; border-bottom:1px solid var(--rule); }
@@ -359,7 +401,15 @@ legend { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 
 .record-section { margin-top:22px; padding-top:16px; border-top:1px solid var(--rule); }
 .record-section-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
 .record-list { display:flex; flex-direction:column; }
-.record-item { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(130px,.8fr) minmax(150px,1fr) auto; align-items:center; gap:12px; padding:11px 0; border-top:1px solid var(--rule); }
+.cc-list { display:flex; flex-direction:column; gap:12px; }
+.cc-card { display:flex; flex-direction:column; gap:8px; padding:12px; border:1px solid var(--rule); border-radius:var(--r-lg); }
+.cc-head { display:flex; align-items:center; justify-content:space-between; }
+.cc-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; }
+.cc-field { flex:1; min-width:160px; margin:0; }
+.cc-field input { width:100%; }
+.cc-note { font-size:12px; color:var(--ink-3); }
+.section-label { font-size:11px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
+.record-item { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(130px,.8fr) minmax(150px,1fr) auto; align-items:end; gap:12px; padding:11px 0; border-top:1px solid var(--rule); }
 .record-item:first-child { border-top:0; }
 .record-item > * { min-width:0; }
 .record-item-name { font-weight:600; }
@@ -420,9 +470,30 @@ legend { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 
 .th-row.bad input { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
 .th-preview { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 12px; background: var(--paper); }
 @media (max-width: 1200px) { .th-edit, .roll-stage { grid-template-columns: minmax(0, 1fr); } .th-preview { position: static; } }
+/* Kiosks: a register toolbar, the queue of what needs someone now, then each kiosk as a card or a
+   row; the cash box gauge marks 75 %. */
+.ktools { margin-bottom:14px; }
+.ktools .fcount { margin-left:4px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+.ktools .record-filters button[aria-pressed="true"] .fcount { color:var(--ink-2); }
+.ktools .view-toggle { margin-left:8px; }
+.kqueue { margin-bottom:14px; padding:6px 0 4px; }
+.kqueue h3 { margin:6px 16px 4px; font-size:13px; }
+.kqueue h3 .muted { font-weight:500; margin-left:4px; }
+.kqueue ol { list-style:none; margin:0; padding:0; }
+.kqueue li { display:grid; grid-template-columns:10px minmax(180px,1.1fr) minmax(0,1.6fr) auto; align-items:center; gap:4px 12px; padding:10px 16px; border-top:1px solid var(--rule); }
+.kqueue .dot { width:8px; height:8px; border-radius:50%; background:var(--ink-3); }
+.kqueue li.bad .dot { background:var(--stamp); } .kqueue li.wait .dot { background:var(--scheduled); }
+.kqueue .kq-main { display:flex; flex-direction:column; min-width:0; }
+.kqueue .kq-act { display:flex; gap:6px; justify-content:flex-end; }
+.kstep { display:flex; flex-direction:column; gap:2px; padding:8px 12px; border-radius:var(--r-sm); background:var(--tint); font-size:13px; }
+.kstep b { font-weight:600; } .kstep span { color:var(--ink-2); font-size:12px; }
+.kstep.bad { background:var(--stamp-soft); } .kstep.bad b { color:var(--stamp-ink); }
+.kstep.wait { background:var(--scheduled-soft); } .kstep.wait b { color:var(--scheduled-ink); }
+.kstep.off b { color:var(--ink-2); }
+.kstep-inline.bad { color:var(--stamp-ink); } .kstep-inline.wait { color:var(--scheduled-ink); } .kstep-inline.ok { font-weight:500; }
+.mini-gauge { display:flex; align-items:center; gap:8px; } .mini-gauge .gauge { flex:1; height:6px; }
+@media (max-width: 760px) { .kqueue li { grid-template-columns:10px minmax(0,1fr); } .kqueue .kq-why, .kqueue .kq-act { grid-column:2; justify-content:flex-start; } .ktools .view-toggle { margin-left:0; } }
 /* Kiosks (K8): one card per kiosk, what needs someone first; the cash box gauge marks 75 %. */
-.ksum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 0 0 14px; font-size: 13px; }
-.ksum .muted { margin-left: auto; font-size: 12px; }
 .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-items: start; }
 .kcard { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .kcard.bad { box-shadow: inset 3px 0 0 var(--stamp), var(--shadow, 0 0 0 1px var(--rule)); }
@@ -473,7 +544,7 @@ const state = {
   signedIn: false, user: { id: 'u1', name: 'Mara Villanueva', role: 'ADMIN', username: 'mvillanueva' },
   stepUpUntil: 0, theme: 'system', day: '2026-11-08',
   userFilter: { role: null, status: 'ACTIVE', branch: '', q: '' },
-  branchFilter: { status: 'ALL', q: '' }, utilityFilter: { status: 'ACTIVE', q: '' },
+  branchFilter: { status: 'ALL', q: '' }, kioskFilter: { status: 'ALL', q: '' }, kioskView: 'cards', collectionFilter: { status: 'OPEN', q: '' }, terminalFilter: { status: 'ALL', q: '' }, utilityFilter: { status: 'ACTIVE', q: '' },
   auditFilter: { group: '', branch: '', date: '' },
   excFilter: { status: 'open', severity: '', branch: '' },
   receiptSel: 2, receiptEdit: null, receiptHl: 'orNumber', receiptReprint: false,
@@ -535,6 +606,9 @@ const state = {
     { code: '07', name: 'Kiosk Abreeza', kind: 'KIOSK', branch: '0001', status: 'ACTIVE', permit: 'FP-2026-0007', serial: 'KSK-22-0421', reported: 'MXL9988TS', startsWith: '',
       series: { start: 1, end: 99999999, next: 1204, pattern: '{branch}-{terminal}-{seq:8}' }, closed: [], registered: 'Nov 4, 2026, 10:24 AM', pending: 0, dayOpen: null,
       sync: { seen: 180, last: 180, seq: 4102, drift: 0, settings: 'latest', exceptions: [] }, keys: [{ fp: '8a2d4c61e0b9f37d5c18e2a4b06f9d17', from: 'Nov 4, 2026, 10:24 AM', to: null }] },
+    { code: '08', name: 'Kiosk NCCC Panabo', kind: 'KIOSK', branch: '0002', status: 'ACTIVE', permit: 'FP-2026-0008', serial: 'KSK-22-0422', reported: 'MXL9988TT', startsWith: '',
+      series: { start: 1, end: 99999999, next: 902, pattern: '{branch}-{terminal}-{seq:8}' }, closed: [], registered: 'Nov 5, 2026, 9:02 AM', pending: 0, dayOpen: null,
+      sync: { seen: 1, last: 1, seq: 2210, drift: 0, settings: 'latest', exceptions: [] }, keys: [{ fp: '3c7e1a904f2b6d58e0c3a17b9d24f6e1', from: 'Nov 5, 2026, 9:02 AM', to: null }] },
     { code: '03', name: 'Counter 1', kind: 'COUNTER', branch: '0002', status: 'PENDING', permit: '', serial: '', startsWith: '', series: null, closed: [], registered: null,
       codeExpires: 'Nov 9, 2026, 9:30 AM', keys: [] },
     { code: '04', name: 'Old laptop', kind: 'COUNTER', branch: '0002', status: 'REVOKED', permit: 'FP-2025-0110', serial: 'NB-4471', startsWith: '', series: null,
@@ -665,7 +739,7 @@ function twoFactorSetup() {
 }
 
 
-/* Same structure as apps/web/src/components/shell/nav.ts. */
+/* Same structure as apps/web/src/components/shell/nav.ts, with an icon per page. */
 const NAV = [
   ['overview', 'Overview'],
   ['group', 'Setup'], ['branches', 'Branches'], ['users', 'Users'], ['terminals', 'Terminals'], ['utilities', 'Utilities'],
@@ -674,6 +748,28 @@ const NAV = [
   ['group', 'Records'], ['audit', 'Audit log'],
   ['group', 'System'], ['alerts', 'Alert emails'],
 ];
+/* 16 px line icons, one stroke weight, drawn for this console (no icon font). */
+const ICON = {
+  overview: '<path d="M2.5 8.5 8 3.5l5.5 5M4 7.5v5.5h3v-3.5h2V13h3V7.5"/>',
+  branches: '<path d="M2.5 13.5h11M3.5 13.5V6.5L8 3l4.5 3.5v7M6.5 13.5v-3.5h3v3.5"/>',
+  users: '<circle cx="6" cy="5.5" r="2.3"/><path d="M2 13c.4-2.4 2-3.7 4-3.7s3.6 1.3 4 3.7"/><path d="M10.5 3.6a2.2 2.2 0 0 1 0 4.1M11.8 9.6c1.3.5 2 1.6 2.2 3.4"/>',
+  terminals: '<rect x="2.5" y="3" width="11" height="7.5" rx="1"/><path d="M6 13.5h4M8 10.5v3"/>',
+  utilities: '<path d="M8.8 2 4 9h3.6L7 14l5-7.2H8.4z"/>',
+  fees: '<path d="M3 3.5h6.5l3.5 3.5-6 6L3 9.5z"/><circle cx="6" cy="6.3" r=".9"/>',
+  receipt: '<path d="M4 2.5h8v11l-1.6-1-1.2 1-1.2-1-1.2 1-1.2-1L4 13.5z"/><path d="M6 6h4M6 8.5h4"/>',
+  daily: '<path d="M3 13.5V8.5M6.5 13.5V5M10 13.5V7M13.5 13.5V3"/>',
+  'collection-files': '<path d="M4 2.5h5.5L12.5 5.5v8H4z"/><path d="M9.5 2.5v3h3M6 9h4.5M6 11.5h3"/>',
+  exceptions: '<path d="M8 2.5 14 13H2z"/><path d="M8 6.5v3M8 11.3v.1"/>',
+  kiosks: '<rect x="4" y="2" width="8" height="12" rx="1.2"/><path d="M6 4.5h4v3H6zM6.5 10.5h3"/>',
+  audit: '<path d="M4 2.5h8v11H4z"/><path d="M6 5.5h4M6 8h4M6 10.5h2.5"/>',
+  alerts: '<path d="M4.5 11V7.5a3.5 3.5 0 0 1 7 0V11l1 1.2h-9z"/><path d="M6.8 13.6a1.4 1.4 0 0 0 2.4 0"/>',
+};
+/* What waits behind a page, shown as a count in the menu (the same lists the pages show). */
+function navCount(k) {
+  if (k === 'exceptions') { const n = EXCEPTIONS.filter((e) => !e.resolved && e.sev === 'CRITICAL').length; return n ? ['bad', n, n + ' open critical'] : null; }
+  if (k === 'kiosks') { const n = kiosks().filter((t) => nextStep(t).rank < 2).length; return n ? ['wait', n, n + ' need someone'] : null; }
+  return null;
+}
 const THEMES = [
   ['system', 'Same as this computer', '<path d="M2.5 3.5h11v7h-11zM6 13.5h4M8 10.5v3"/>'],
   ['light', 'Light', '<circle cx="8" cy="8" r="2.8"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/>'],
@@ -701,13 +797,19 @@ function themeSwitch() {
     '<svg viewBox="0 0 16 16" aria-hidden="true">' + icon + '</svg></button>').join('') + '</div>';
 }
 function shell(route, body) {
+  const link = ([k, label]) => {
+    const on = route === k, c = navCount(k);
+    return '<a href="#/' + k + '" class="' + (on ? 'on' : '') + '"' + (on ? ' aria-current="page"' : '') + '><svg viewBox="0 0 16 16" aria-hidden="true">' + ICON[k] + '</svg><span class="nl">' + label + '</span>' +
+      (c ? '<span class="ncount ' + c[0] + '" title="' + c[2] + '"><span class="sr">' + c[2] + '</span><span aria-hidden="true">' + c[1] + '</span></span>' : '') + '</a>';
+  };
+  const initials = state.user.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
+  const brand = '<div class="brand"><svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="7"/><path d="M8 9.5h12M14 9.5v10"/></svg><div><b>TPPA Payments</b><span>Head-office console</span></div></div>';
   return '<div class="shell' + (state.menuOpen ? ' menu-open' : '') + '">' +
-    '<header class="topbar"><div class="brand"><b>TPPA Payments</b><span>Head-office console</span></div><button class="btn ghost" aria-label="Open the menu" onclick="state.menuOpen=true;render()">Menu</button></header>' +
-    '<div class="side-scrim" onclick="state.menuOpen=false;render()"></div><aside class="side"><div class="brand"><b>TPPA Payments</b><span>Head-office console</span></div><nav class="nav" aria-label="Main">' +
-    NAV.map(([k, label]) => k === 'group' ? '<div class="group">' + label + '</div>' :
-      '<a href="#/' + k + '" class="' + (route === k ? 'on' : '') + '"' + (route === k ? ' aria-current="page"' : '') + '>' + label + '</a>').join('') +
-    '</nav><div class="me"><b>' + esc(state.user.name) + '</b><span class="muted small">' + ROLE[state.user.role] + '</span>' +
-    '<div class="me-row"><button class="btn sm ghost" style="padding:0" onclick="state.signedIn=false;location.hash=\'#/signin\'">Sign out</button>' + themeSwitch() + '</div></div></aside><main>' + body + '</main></div>';
+    '<header class="topbar">' + brand + '<button class="btn ghost" aria-label="Open the menu" onclick="state.menuOpen=true;render()">Menu</button></header>' +
+    '<div class="side-scrim" onclick="state.menuOpen=false;render()"></div><aside class="side">' + brand + '<nav class="nav" aria-label="Main">' +
+    NAV.map((n) => n[0] === 'group' ? '<div class="group">' + n[1] + '</div>' : link(n)).join('') +
+    '</nav><div class="me"><div class="me-who"><span class="avatar" aria-hidden="true">' + initials + '</span><div><b>' + esc(state.user.name) + '</b><span>' + ROLE[state.user.role] + '</span></div></div>' +
+    '<div class="me-row">' + themeSwitch() + '<button class="btn sm ghost" onclick="state.signedIn=false;location.hash=\'#/signin\'">Sign out</button></div></div></aside><main>' + body + '</main></div>';
 }
 const head = (title, intro, action) => '<div class="head"><div><h1>' + title + '</h1>' + (intro ? '<p>' + intro + '</p>' : '') + '</div>' + (action || '') + '</div>';
 
@@ -741,22 +843,39 @@ function attention() {
   }
   for (const c of COLLECTIONS) if (!c.counted) waiting.push(['blue', 'To count', 'Kiosk ' + c.kiosk + ' box collected ' + c.at + ' is waiting for its office count', 'kiosks'])
   for (const u of state.users) if (u.locked && u.status === 'ACTIVE') soon.push(['bad', 'Locked', u.name + ' is locked out after too many failed sign-ins', 'users']);
-  return [...blocking, ...soon, ...waiting, ...scheduled];
+  const tag = (list, g) => list.map((x) => [...x, g]);
+  return [...tag(blocking, 'now'), ...tag(soon, 'soon'), ...tag(waiting, 'waiting'), ...tag(scheduled, 'scheduled')];
 }
 const lowSeries = (s) => s && (s.end - s.next + 1) / (s.end - s.start + 1) < 0.05;
+const GROUPS = { now: ['Stops work now', 'bad'], soon: ['Soon', 'wait'], waiting: ['Waiting for someone', 'blue'], scheduled: ['Scheduled', 'off'] };
 function overview() {
+  const sum = (key) => TODAY.reduce((t, b) => t + (key === 'count' || key === 'voids' || key === 'critical' ? b[key] : toCents(b[key])), 0);
+  const closed = TODAY.reduce((t, b) => t + b.closed, 0), terms = TODAY.reduce((t, b) => t + b.terminals, 0);
+  const items = attention();
+  const ledger = '<section class="ledger sheet" aria-label="Today across branches">' +
+    [['Payments', fmtInt(sum('count')), 'across ' + TODAY.filter((b) => b.count).length + ' branch' + (TODAY.filter((b) => b.count).length === 1 ? '' : 'es')],
+      ['Collected', '&#8369;' + money(sum('collection')), 'for the utilities'],
+      ['Service fees', '&#8369;' + money(sum('fee')), sum('voids') + ' voided today'],
+      ['Day closed', closed + ' of ' + terms, terms - closed ? (terms - closed) + ' terminal' + (terms - closed > 1 ? 's' : '') + ' still open' : 'every terminal closed']]
+      .map(([l, v, sub]) => '<div class="lg"><span class="l">' + l + '</span><span class="v">' + v + '</span><span class="s">' + sub + '</span></div>').join('') + '</section>';
+  const groups = Object.entries(GROUPS).map(([g, [title, kind]]) => {
+    const list = items.filter((x) => x[4] === g);
+    if (!list.length) return '';
+    return '<div class="agroup"><h3><span class="adot ' + kind + '"></span>' + title + ' <span class="muted">' + list.length + '</span></h3>' +
+      list.map(([k, label, text, link]) => '<a href="#/' + link + '"><span>' + chip(k, label) + '</span><span>' + esc(text) + '</span><span class="go" aria-hidden="true">&rarr;</span></a>').join('') + '</div>';
+  }).join('');
   const rows = TODAY.map((b) => '<tr onclick="location.hash=\'#/daily\'"><td><a href="#/daily"><span class="mono">' + b.code + '</span> ' + esc(b.name) + '</a></td>' +
     '<td class="num mono">' + b.count + '</td><td class="num mono">' + peso(b.collection) + '</td><td class="num mono">' + peso(b.fee) + '</td><td class="num mono">' + b.voids + '</td>' +
     '<td class="num">' + (b.terminals === 0 ? '<span class="muted">no terminals</span>' : chip(b.closed === b.terminals ? 'ok' : 'off', b.closed + ' of ' + b.terminals)) + '</td>' +
     '<td class="num">' + (b.critical ? chip('bad', b.critical + ' critical') : '<span class="muted">none</span>') + '</td><td class="num mono">' + b.files + '</td></tr>').join('');
-  const items = attention();
-  return '<div class="head"><div><h1>Good afternoon, Mara</h1><p>Sunday, November 8, 2026 &middot; Admin</p></div></div>' +
-    '<h3>Today</h3><div class="sheet" style="margin-bottom:24px"><table><thead><tr><th>Branch</th>' +
-    ['Payments', 'Collected', 'Fees', 'Voids', 'Day closed', 'Problems', 'Files'].map((h) => '<th class="num">' + h + '</th>').join('') + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
-    '<h3>Needs your attention</h3><div class="sheet attention">' +
-    (items.length ? items.map(([kind, label, text, link]) => '<a href="#/' + link + '">' + '<span>' + chip(kind, label) + '</span><span>' + esc(text) + '</span><span class="go">Open</span></a>').join('') :
-      '<p class="pad">Nothing needs your attention. Everything is set up and in force.</p>') + '</div>' +
-    '<p class="small muted" style="margin-top:8px">Today shows for roles with reports; each branch line opens its daily report. The list is most urgent first: what stops tellers, what will soon, what waits for someone, then scheduled changes.</p>';
+  return '<div class="head ohead"><div><h1>Good afternoon, Mara</h1><p>Sunday, November 8, 2026 &middot; Admin</p></div><span class="bday">' + chip(closed === terms ? 'ok' : 'wait', 'Business day Nov 8') + '</span></div>' +
+    ledger +
+    '<div class="ogrid"><section aria-label="Needs your attention"><h2 class="sec">Needs your attention</h2><div class="sheet attention">' +
+    (groups || '<p class="pad">Nothing needs your attention. Everything is set up and in force.</p>') + '</div></section>' +
+    '<section aria-label="Today by branch"><h2 class="sec">Today by branch</h2><div class="sheet kscroll"><table><thead><tr><th>Branch</th>' +
+    ['Payments', 'Collected', 'Fees', 'Voids', 'Day closed', 'Problems', 'Files'].map((h) => '<th class="num">' + h + '</th>').join('') + '</tr></thead><tbody>' + rows +
+    '<tr class="total"><td>All branches</td><td class="num mono">' + fmtInt(sum('count')) + '</td><td class="num mono">&#8369;' + money(sum('collection')) + '</td><td class="num mono">&#8369;' + money(sum('fee')) + '</td><td class="num mono">' + sum('voids') + '</td><td class="num">' + closed + ' of ' + terms + '</td><td class="num">' + (sum('critical') ? sum('critical') + ' critical' : 'none') + '</td><td class="num mono">' + TODAY.reduce((t, b) => t + b.files, 0) + '</td></tr>' +
+    '</tbody></table></div><p class="small muted" style="margin-top:8px">Each branch opens its daily report.</p></section></div>';
 }
 
 /* ------------------------------------------------------------------ branches */
@@ -767,12 +886,11 @@ function branches() {
   const rows = state.branches.filter((b) => (f.status === 'ALL' || (f.status === 'ACTIVE') === b.active) && (!q || (b.code + ' ' + b.name + ' ' + (b.address || '')).toLowerCase().includes(q)));
   const locked = state.branches.filter((b) => b.locked).length;
   return head('Branches', 'Each branch has a permanent identity in receipts and collection files.', '<button class="btn primary" onclick="newBranch()">New branch</button>') +
-    '<div class="record-summary"><span><b>' + state.branches.length + '</b> branches</span><span><b>' + state.branches.filter((b) => b.active).length + '</b> active</span><span><b>' + locked + '</b> codes locked by payments</span></div>' +
     '<div class="sheet"><div class="record-tools"><input type="search" aria-label="Search branches" placeholder="Search name, code or address" value="' + esc(f.q) + '" oninput="setBranchFilter({q:this.value})"><div class="record-filters" role="group" aria-label="Branch status">' +
     [['ALL', 'All'], ['ACTIVE', 'Active'], ['INACTIVE', 'Inactive']].map(([value, label]) => '<button aria-pressed="' + (f.status === value) + '" onclick="setBranchFilter({status:\'' + value + '\'})">' + label + '</button>').join('') +
     '</div><span class="record-count">' + rows.length + ' of ' + state.branches.length + ' branches</span></div>' +
     '<div class="table-scroll"><table class="record-table"><thead><tr><th>Branch</th><th>Code</th><th>Address</th><th class="num">Active staff</th><th>Status</th></tr></thead><tbody>' +
-    (rows.length ? rows.map((b) => '<tr onclick="editBranch(\'' + b.id + '\')"><td><span class="record-name">' + esc(b.name) + '</span></td><td class="mono">' + b.code + (b.locked ? '<span class="code-lock" title="Locked after the first payment">Locked</span>' : '') + '</td><td class="muted">' + esc(b.address || '—') + '</td><td class="num">' + staffOf(b.code) + '</td><td>' + (b.active ? chip('ok', 'Active') : chip('off', 'Inactive')) + '</td></tr>').join('') : '<tr><td colspan="5" class="muted" style="padding:28px;text-align:center">' + (state.branches.length ? 'No branches match these filters.' : 'No branches yet. Create the first branch.') + '</td></tr>') +
+    (rows.length ? rows.map((b) => '<tr onclick="editBranch(\'' + b.id + '\')"><td><span class="record-name">' + esc(b.name) + '</span></td><td class="mono">' + b.code + (b.locked ? '<span class="code-lock" title="Code locked after first payment"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.25" y="7" width="9.5" height="6.75" rx="1.5"/><path d="M5.5 7V5.25a2.5 2.5 0 0 1 5 0V7" stroke-linecap="round"/></svg><span class="sr">Code locked after first payment</span></span>' : '') + '</td><td class="muted">' + esc(b.address || '—') + '</td><td class="num">' + staffOf(b.code) + '</td><td>' + (b.active ? chip('ok', 'Active') : chip('off', 'Inactive')) + '</td></tr>').join('') : '<tr><td colspan="5" class="muted" style="padding:28px;text-align:center">' + (state.branches.length ? 'No branches match these filters.' : 'No branches yet. Create the first branch.') + '</td></tr>') +
     '</tbody></table></div></div>';
 }
 function newBranch() {
@@ -801,7 +919,7 @@ function editBranch(id, tab = 'details') {
       field('Branch name', '<input id="edit-name" value="' + esc(b.name) + '">') + field('Address (optional)', '<input id="edit-address" value="' + esc(b.address || '') + '">', 'Used to identify this location in the console.') +
       (staff ? '<div class="status-note">' + staff + ' active staff are assigned. Move or deactivate them before deactivating this branch.</div>' : '') +
       '<div class="drawer-foot"><div>' + (b.active ? '<button class="btn danger"' + (staff ? ' disabled title="Move or deactivate the active staff first"' : ' onclick="setBranchActive(\'' + id + '\',false)"') + '>Deactivate branch</button>' : '<button class="btn" onclick="setBranchActive(\'' + id + '\',true)">Reactivate branch</button>') + '</div><div class="actions"><button class="btn ghost" onclick="closeOverlay()">Cancel</button><button class="btn primary" onclick="saveBranch(\'' + id + '\')">Save changes</button></div></div></div>'
-      : '<div class="drawer-body"><p class="small muted">A utility is available for payments only when enabled here and a fee is in force. The branch code overrides the utility default in collection filenames.</p><div class="record-list">' + (state.billers.filter((u) => u.active).map((u) => branchUtilityRow(b, u)).join('') || '<p class="status-note">No active utilities. Add a utility in Setup, Utilities.</p>') + '</div></div>'), true);
+      : '<div class="drawer-body"><div class="section-label">Utilities at this branch</div><p class="small muted">Tellers can take payments for a utility once it is enabled here (and it has a fee in force). The client code is the utility&#39;s ID for this branch, used in its collection files. Leave it empty to use the utility&#39;s default client code.</p><div class="cc-list">' + (state.billers.filter((u) => u.active).map((u) => branchUtilityRow(b, u)).join('') || '<p class="status-note">No active utilities. Add a utility in Setup, Utilities.</p>') + '</div></div>'), true);
 }
 function saveBranch(id) {
   const b = state.branches.find((x) => x.id === id), name = $('#edit-name').value.trim();
@@ -812,12 +930,13 @@ function saveBranch(id) {
 }
 function branchUtilityRow(b, u) {
   const cur = u.atBranch[b.code], enabled = cur && cur.enabled, own = cur ? cur.code : '';
-  const hint = u.defaultClient ? (own ? 'This branch&#39;s own code (the utility&#39;s default is ' + u.defaultClient + ').' : 'Empty: uses the utility&#39;s default, ' + u.defaultClient + '.') : cur ? '' : 'Enter the client code to enable it here.';
+  const note = u.defaultClient ? (own ? 'This branch&#39;s own code (the utility&#39;s default is ' + u.defaultClient + ').' : 'Empty: uses the utility&#39;s default, ' + u.defaultClient + '.') : cur ? '' : 'Enter the client code to enable it here.';
   const id = b.code + '-' + u.code;
-  return '<div class="record-item"><div><span class="record-item-name">' + esc(u.name) + '</span><span class="record-item-meta">' + u.code + ' · ' + (enabled ? 'Enabled here' : 'Not enabled') + '</span></div>' +
-    '<div>' + field(u.code + ' client code', '<input class="code" id="cc-' + id + '" maxlength="6" value="' + own + '" placeholder="' + (u.defaultClient || 'Assigned by the utility') + '">', hint) + '</div><div class="record-item-meta">' + (own ? 'Branch code: ' + own : u.defaultClient ? 'Uses default ' + u.defaultClient : 'No effective code') + '</div>' +
+  return '<div class="cc-card"><div class="cc-head"><b>' + u.code + '</b>' + (enabled ? chip('ok', 'Enabled') : chip('off', 'Not enabled')) + '</div>' +
+    '<div class="cc-row"><div class="field cc-field"><label for="cc-' + id + '">' + u.code + ' client code</label><input class="code" id="cc-' + id + '" maxlength="6" value="' + own + '" placeholder="' + (u.defaultClient || 'Assigned by the utility, e.g. TPPA01') + '"' + (note ? ' aria-describedby="ccn-' + id + '"' : '') + '></div>' +
     (enabled ? '<button class="btn" onclick="setUtility(\'' + b.id + '\',\'' + u.code + '\',true,\'Client code saved.\')">Save code</button><button class="btn danger" onclick="setUtility(\'' + b.id + '\',\'' + u.code + '\',false,\'' + u.code + ' disabled at this branch.\')">Disable</button>'
-      : '<button class="btn primary" onclick="setUtility(\'' + b.id + '\',\'' + u.code + '\',true,\'' + u.code + ' enabled at this branch.\')">Enable</button>') + '</div></div>';
+      : '<button class="btn primary" onclick="setUtility(\'' + b.id + '\',\'' + u.code + '\',true,\'' + u.code + ' enabled at this branch.\')">Enable</button>') + '</div>' +
+    (note ? '<span class="cc-note" id="ccn-' + id + '">' + note + '</span>' : '') + '</div>';
 }
 function setUtility(branchId, billerCode, enabled, msg) {
   const b = state.branches.find((x) => x.id === branchId), u = state.billers.find((x) => x.code === billerCode);
@@ -918,15 +1037,23 @@ function clockText(ms) {
   if (m < 1) return 'In step with the server';
   return m + ' minute' + (m === 1 ? '' : 's') + ' ' + (ms > 0 ? 'behind' : 'ahead of') + ' the server';
 }
+function setTerminalFilter(patch) { Object.assign(state.terminalFilter, patch); render(); }
 function terminals() {
+  const f = state.terminalFilter, q = f.q.toLowerCase();
+  const rows = state.terminals.filter((t) => (f.status === 'ALL' || t.status === f.status) &&
+    (!q || (t.code + ' ' + t.name + ' ' + (t.kind === 'KIOSK' ? 'kiosk' : 'counter') + ' ' + t.branch + ' ' + branchName(t.branch) + ' ' + (t.permit || '')).toLowerCase().includes(q)));
   return head('Terminals', 'Each teller computer is registered once with a one-time code. Its 2-digit code is in every OR and transaction number.', '<button class="btn primary" onclick="newTerminal()">New terminal</button>') +
-    '<div class="sheet"><table><thead><tr><th>Code</th><th>Name</th><th>Branch</th><th>BIR permit</th><th>OR numbers left</th><th>Status</th><th>Sync</th></tr></thead><tbody>' +
-    state.terminals.map((t) => {
+    '<div class="sheet"><div class="record-tools"><input type="search" aria-label="Search terminals" placeholder="Search code, name, branch or BIR permit" value="' + esc(f.q) + '" oninput="setTerminalFilter({q:this.value})"><div class="record-filters" role="group" aria-label="Terminal status">' +
+    [['ALL', 'All'], ['ACTIVE', 'Registered'], ['PENDING', 'Waiting for setup'], ['REVOKED', 'Revoked']].map(([value, label]) => '<button aria-pressed="' + (f.status === value) + '" onclick="setTerminalFilter({status:\'' + value + '\'})">' + label + '</button>').join('') +
+    '</div><span class="record-count">' + rows.length + ' of ' + state.terminals.length + ' terminals</span></div>' +
+    '<div class="table-scroll"><table><thead><tr><th>Code</th><th>Name</th><th>Branch</th><th>BIR permit</th><th>OR numbers left</th><th>Status</th><th>Sync</th></tr></thead><tbody>' +
+    (rows.length ? '' : '<tr><td colspan="7" class="muted" style="text-align:center;padding:24px">No terminals match these filters.</td></tr>') +
+    rows.map((t) => {
       const s = t.series, left = s ? s.end - s.next + 1 : 0, pct = s ? left / (s.end - s.start + 1) : 0, low = pct < 0.05, st = syncState(t);
       return '<tr onclick="location.hash=\'#/terminal/' + t.code + '\'"><td class="mono"><b>' + t.code + '</b></td><td>' + esc(t.name) + (t.kind === 'KIOSK' ? '<span class="tag">Kiosk</span>' : '') + '</td><td><span class="mono">' + t.branch + '</span> ' + esc(branchName(t.branch)) + '</td><td class="mono">' + (t.permit || '<span class="muted">-</span>') + '</td><td style="min-width:170px">' +
         (s ? '<div class="bar' + (low ? ' low' : '') + '"><i style="width:' + Math.max(2, pct * 100) + '%"></i></div><span class="small ' + (low ? '' : 'muted') + '" style="color:' + (low ? 'var(--scheduled)' : '') + '">' + fmtInt(left) + (low ? ', running low' : '') + '</span>' : '<span class="muted small">No active series</span>') + '</td><td>' +
         statusChip(t.status) + '</td><td>' + (st ? chip(st[0], st[1]) : '<span class="small muted">-</span>') + '</td></tr>';
-    }).join('') + '</tbody></table></div>';
+    }).join('') + '</tbody></table></div></div>';
 }
 function newTerminal() {
   overlay('<h2>New terminal</h2><p class="muted">You will get a one-time code to enter in the teller app on that computer.</p>' +
@@ -1172,7 +1299,6 @@ function utilities() {
   const f = state.utilityFilter, q = f.q.toLowerCase();
   const rows = state.billers.filter((b) => (f.status === 'ALL' || (f.status === 'ACTIVE') === b.active) && (!q || (b.code + ' ' + b.name + ' ' + b.dist).toLowerCase().includes(q)));
   return head('Utilities', 'Account entry and collection-file settings for each utility TPPA collects for.', '<button class="btn primary" onclick="addUtility()">Add utility</button>') +
-    '<div class="record-summary"><span><b>' + state.billers.length + '</b> utilities</span><span><b>' + state.billers.filter((b) => b.active).length + '</b> active</span><span>Defaults apply when a branch has no override</span></div>' +
     '<div class="sheet"><div class="record-tools"><input type="search" aria-label="Search utilities" placeholder="Search utility or distribution code" value="' + esc(f.q) + '" oninput="setUtilityFilter({q:this.value})"><div class="record-filters" role="group" aria-label="Utility status">' +
     [['ALL', 'All'], ['ACTIVE', 'Active'], ['INACTIVE', 'Inactive']].map(([value, label]) => '<button aria-pressed="' + (f.status === value) + '" onclick="setUtilityFilter({status:\'' + value + '\'})">' + label + '</button>').join('') +
     '</div><span class="record-count">' + rows.length + ' of ' + state.billers.length + ' utilities</span></div>' +
@@ -1774,6 +1900,8 @@ const KIOSK_LIVE = {
     pieces: [['NOTE', '1000.00', 142], ['NOTE', '500.00', 117], ['NOTE', '200.00', 88], ['NOTE', '100.00', 151], ['NOTE', '50.00', 74], ['NOTE', '20.00', 70], ['COIN', '20.00', 3], ['COIN', '10.00', 22], ['COIN', '5.00', 12], ['COIN', '1.00', 30]] },
   '06': { state: 'OUT_OF_SERVICE', since: 'Nov 8, 2026, 12:04 PM', seen: 2, box: { total: '48200.00', notes: 160 }, today: { count: 31, total: '40512.00' }, last: '11:58 AM', paper: 'Out', doors: 'Closed', held: null,
     reasons: [['PAPER_OUT', 'The printer is out of paper']], pieces: [['NOTE', '1000.00', 30], ['NOTE', '500.00', 22], ['NOTE', '100.00', 60], ['NOTE', '50.00', 26], ['NOTE', '20.00', 22], ['COIN', '10.00', 4], ['COIN', '5.00', 12], ['COIN', '1.00', 20]] },
+  '08': { state: 'IN_SERVICE', since: 'Nov 8, 2026, 6:00 AM', seen: 1, box: { total: '62300.00', notes: 210 }, today: { count: 58, total: '73410.00' }, last: '2:44 PM', paper: 'OK', doors: 'Closed', held: null, reasons: [],
+    pieces: [['NOTE', '1000.00', 31], ['NOTE', '500.00', 30], ['NOTE', '100.00', 95], ['NOTE', '50.00', 34], ['NOTE', '20.00', 20], ['COIN', '10.00', 12], ['COIN', '1.00', 40]] },
   '07': { state: 'HELD', since: 'Nov 8, 2026, 9:15 AM', seen: 3 * 60, box: { total: '0.00', notes: 0 }, today: { count: 0, total: '0.00' }, last: 'Nov 7, 7:48 PM', paper: 'OK', doors: 'Closed',
     held: { by: 'Mara Villanueva', at: 'Nov 8, 2026, 9:15 AM', reason: 'Mall closed for repairs until Nov 10' }, reasons: [['HELD', 'Head office took this kiosk out of service']], pieces: [] },
 };
@@ -1787,6 +1915,7 @@ const KIOSK_ACTIVITY = {
   '05': [['Nov 8, 6:12 AM', 'Back in service', 'Kiosk'], ['Nov 8, 6:11 AM', 'Service door closed', 'Marco Dela Cruz signed out'], ['Nov 8, 6:10 AM', 'Cash collected', 'Marco Dela Cruz &middot; expected &#8369;198,420.00, slip printed'],
     ['Nov 8, 6:04 AM', 'Paper loaded, test printed', 'Marco Dela Cruz'], ['Nov 8, 6:02 AM', 'Service door opened', 'Marco Dela Cruz signed in'], ['Nov 8, 12:00 AM', 'Day closed', 'Kiosk &middot; Z-reading of Nov 7: 241 payments, &#8369;351,208.00']],
   '06': [['Nov 8, 12:04 PM', 'Out of service', 'The printer is out of paper'], ['Nov 8, 3:12 AM', 'Cash door opened', 'Nobody signed in in staff mode'], ['Nov 8, 12:00 AM', 'Day closed', 'Kiosk &middot; Z-reading of Nov 7: 58 payments, &#8369;80,412.00']],
+  '08': [['Nov 8, 6:00 AM', 'Back in service', 'Kiosk'], ['Nov 8, 12:00 AM', 'Day closed', 'Kiosk &middot; Z-reading of Nov 7: 112 payments, &#8369;140,220.00']],
   '07': [['Nov 8, 9:15 AM', 'Taken out of service by head office', 'Mara Villanueva: Mall closed for repairs until Nov 10'], ['Nov 8, 12:00 AM', 'Day closed', 'Kiosk &middot; Z-reading of Nov 7: 96 payments, &#8369;122,840.00']],
 };
 const BOX_ALERT = 0.75;
@@ -1813,31 +1942,86 @@ function holdButton(t) {
   const k = KIOSK_LIVE[t.code];
   return k.held ? '<button class="btn sm" onclick="releaseDialog(\'' + t.code + '\')">Bring back into service</button>' : '<button class="btn sm ghost-line" onclick="holdDialog(\'' + t.code + '\')">Take out of service</button>';
 }
-function kioskCardHtml(t) {
+/* The one thing to do at a kiosk now, in plain words, and how urgent (0 now, 1 soon, 2 none). */
+const STEP = { PAPER_OUT: 'Load paper', PAPER_NEAR_END: 'Load paper soon', CASH_BOX_FULL: 'Collect the cash box', NOTE_ACCEPTOR_FAULT: 'Clear the note acceptor', COIN_ACCEPTOR_FAULT: 'Clear the coin acceptor', CASH_DOOR_OPEN: 'Close the cash door', PRINTER_OFFLINE: 'Check the receipt printer' };
+function nextStep(t) {
   const k = KIOSK_LIVE[t.code], share = boxShare(t);
-  const att = k.state === 'OUT_OF_SERVICE' || k.seen > 10 ? 'bad' : share >= BOX_ALERT || k.held ? 'warn' : '';
+  if (k.seen > 10) return { rank: 0, kind: 'off', what: 'Check the kiosk&#39;s network', why: 'Not heard from for ' + seenText(k.seen).replace(' ago', '') + '; what it last said may be old', since: null };
+  if (k.state === 'OUT_OF_SERVICE') { const [code, msg] = k.reasons[0] || []; return { rank: 0, kind: 'bad', what: STEP[code] || 'Open staff mode to see what to fix', why: esc(msg || 'Out of service'), since: k.since }; }
+  if (k.held) return { rank: 1, kind: 'wait', what: 'Held by head office', why: esc(k.held.reason) + ' (' + esc(k.held.by) + ')', since: k.held.at };
+  if (share >= BOX_ALERT) return { rank: 1, kind: 'wait', what: 'Collect the cash box soon', why: Math.round(share * 100) + ' % of its limit', since: null };
+  return { rank: 2, kind: 'ok', what: 'Taking payments', why: 'Last payment ' + k.last, since: null };
+}
+const STATUS_FILTERS = [['ALL', 'All'], ['ATTENTION', 'Needs someone'], ['IN', 'In service'], ['OUT', 'Out of service'], ['OFFLINE', 'Offline']];
+function kioskMatches(t, f) {
+  const k = KIOSK_LIVE[t.code], st = nextStep(t), q = f.q.trim().toLowerCase();
+  const byStatus = f.status === 'ALL' || (f.status === 'ATTENTION' && st.rank < 2) || (f.status === 'IN' && k.state === 'IN_SERVICE' && k.seen <= 10) ||
+    (f.status === 'OUT' && k.state !== 'IN_SERVICE' && k.seen <= 10) || (f.status === 'OFFLINE' && k.seen > 10);
+  return byStatus && (!q || (t.code + ' ' + t.name + ' ' + t.branch + ' ' + branchName(t.branch)).toLowerCase().includes(q));
+}
+function miniGauge(t) {
+  const share = boxShare(t), pct = Math.round(share * 100), cls = share >= 0.9 ? 'bad' : share >= BOX_ALERT ? 'warn' : '';
+  return '<div class="mini-gauge"><div class="gauge ' + cls + '"><i style="width:' + Math.min(100, pct) + '%"></i><span class="tick"></span></div><span class="mono small">' + pct + ' %</span></div>';
+}
+function kioskCardHtml(t) {
+  const k = KIOSK_LIVE[t.code], st = nextStep(t), toCount = COLLECTIONS.filter((c) => c.kiosk === t.code && !c.counted).length;
   const fact = (l, v) => '<div><span class="l">' + l + '</span><span class="v">' + v + '</span></div>';
-  return '<article class="sheet kcard ' + att + '"><header><div><a class="kname" href="#/kiosk/' + t.code + '"><span class="mono">' + t.code + '</span> ' + esc(t.name) + '</a><div class="small muted">' + esc(branchName(t.branch)) + ' ' + t.branch + '</div></div>' + kioskChip(t) + '</header>' +
-    (k.reasons.length ? '<ul class="why">' + k.reasons.map(([, m]) => '<li>' + esc(m) + (k.held ? ': ' + esc(k.held.reason) : '') + '</li>').join('') + '</ul>' + '<p class="small muted" style="margin:0">Since ' + k.since + '</p>' : '') +
+  return '<article class="sheet kcard ' + (st.rank === 0 ? 'bad' : st.rank === 1 ? 'warn' : '') + '" aria-label="Kiosk ' + t.code + ' ' + esc(t.name) + '"><header><div><a class="kname" href="#/kiosk/' + t.code + '"><span class="mono">' + t.code + '</span> ' + esc(t.name) + '</a><div class="small muted">' + esc(branchName(t.branch)) + ' ' + t.branch + '</div></div>' + kioskChip(t) + '</header>' +
+    '<div class="kstep ' + st.kind + '"><b>' + st.what + '</b><span>' + st.why + (st.since ? ' &middot; since ' + st.since.split(', ').pop() : '') + '</span></div>' +
     gauge(t) +
-    '<div class="kfacts">' + fact('Today', k.today.count + ' &middot; <span class="mono">' + peso(k.today.total) + '</span>') + fact('Last payment', k.last) + fact('Synced', seenText(k.seen)) +
-    fact('Paper', k.paper === 'OK' ? 'OK' : '<span class="bad-ink">' + k.paper + '</span>') + fact('Doors', k.doors) + fact('To count', String(COLLECTIONS.filter((c) => c.kiosk === t.code && !c.counted).length)) + '</div>' +
+    '<div class="kfacts">' + fact('Today', k.today.count + ' &middot; <span class="mono">' + peso(k.today.total) + '</span>') + fact('Synced', seenText(k.seen)) + fact('To count', toCount ? '<a href="#/kiosks" onclick="state.kioskTab=\'collections\'">' + toCount + ' box' + (toCount > 1 ? 'es' : '') + '</a>' : 'None') + '</div>' +
     '<footer><a class="btn sm ghost" href="#/kiosk/' + t.code + '">Details</a>' + holdButton(t) + '</footer></article>';
+}
+/* What needs someone now, most urgent first: the page's focal point. */
+function kioskQueue(list) {
+  const due = list.map((t) => [t, nextStep(t)]).filter(([, st]) => st.rank < 2).sort((a, b) => a[1].rank - b[1].rank);
+  if (!list.length) return ''
+  if (!due.length) return '<div class="callout ok" style="margin-bottom:14px">Every kiosk shown is taking payments. Nothing needs anyone now.</div>';
+  return '<section class="sheet kqueue" aria-label="Needs someone now"><h3>Needs someone now <span class="muted">' + due.length + '</span></h3><ol>' +
+    due.map(([t, st]) => '<li class="' + st.kind + '"><span class="dot" aria-hidden="true"></span><div class="kq-main"><b>' + st.what + '</b><span class="small muted"><span class="mono">' + t.code + '</span> ' + esc(t.name) + ' &middot; ' + esc(branchName(t.branch)) + '</span></div>' +
+      '<div class="kq-why small">' + st.why + (st.since ? '<span class="muted"> &middot; since ' + st.since.split(', ').pop() + '</span>' : '') + '</div>' +
+      '<div class="kq-act">' + (KIOSK_LIVE[t.code].held ? '<button class="btn sm" onclick="releaseDialog(\'' + t.code + '\')">Bring back</button>' : '') + '<a class="btn sm ghost" href="#/kiosk/' + t.code + '">Open</a></div></li>').join('') + '</ol></section>';
+}
+function kioskListHtml(list) {
+  return '<div class="sheet kscroll"><table><thead><tr><th>Kiosk</th><th>State</th><th>Next step</th><th>Cash box</th><th class="num">Today</th><th>Synced</th><th class="num">To count</th><th></th></tr></thead><tbody>' +
+    list.map((t) => {
+      const k = KIOSK_LIVE[t.code], st = nextStep(t), toCount = COLLECTIONS.filter((c) => c.kiosk === t.code && !c.counted).length;
+      return '<tr><td><a href="#/kiosk/' + t.code + '"><span class="mono">' + t.code + '</span> ' + esc(t.name) + '</a><div class="small muted">' + esc(branchName(t.branch)) + ' ' + t.branch + '</div></td><td>' + kioskChip(t) + '</td>' +
+        '<td><b class="kstep-inline ' + st.kind + '">' + st.what + '</b><div class="small muted">' + st.why + '</div></td><td style="min-width:140px">' + miniGauge(t) + '</td>' +
+        '<td class="num mono">' + k.today.count + '<div class="small muted">' + peso(k.today.total) + '</div></td><td class="small">' + seenText(k.seen) + '</td><td class="num">' + (toCount || '<span class="muted">0</span>') + '</td><td class="act">' + holdButton(t) + '</td></tr>';
+    }).join('') + (list.length ? '' : '<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">No kiosks match these filters.</td></tr>') + '</tbody></table></div>';
 }
 function kioskTabs() {
   const open = COLLECTIONS.filter((c) => !c.counted).length;
   return '<div class="kind-tabs" role="group" aria-label="Kiosks view">' + [['now', 'Now'], ['collections', 'Cash collections' + (open ? ' <span class="count">' + open + ' to count</span>' : '')]].map(([k, label]) =>
     '<button type="button" aria-pressed="' + ((state.kioskTab || 'now') === k) + '" onclick="state.kioskTab=\'' + k + '\';render()">' + label + '</button>').join('') + '</div>';
 }
+function setKioskFilter(patch) { Object.assign(state.kioskFilter, patch); render(); }
 function kiosksPage() {
-  const list = kiosks();
-  const rank = (t) => { const k = KIOSK_LIVE[t.code]; return k.state === 'OUT_OF_SERVICE' || k.seen > 10 ? 0 : boxShare(t) >= BOX_ALERT || k.held ? 1 : 2; };
-  const out = list.filter((t) => KIOSK_LIVE[t.code].state !== 'IN_SERVICE').length, high = list.filter((t) => boxShare(t) >= BOX_ALERT).length;
-  const body = (state.kioskTab || 'now') === 'now'
-    ? '<p class="ksum"><b>' + list.length + ' kiosks</b><span>' + (list.length - out) + ' in service</span><span class="' + (out ? 'bad-ink' : '') + '">' + out + ' out of service</span><span class="' + (high ? 'warn-ink' : '') + '">' + high + ' to collect soon</span><span class="muted">Updated as each kiosk syncs (every 15 s while online)</span></p>' +
-      '<div class="kgrid">' + [...list].sort((a, b) => rank(a) - rank(b)).map(kioskCardHtml).join('') + '</div>'
-    : '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px"><p class="small muted" style="margin:0">Newest first. Each box is counted at the office, once.</p><button class="btn sm" onclick="slipDialog()">Record from a slip</button></div>' + collectionsTable(COLLECTIONS, true);
-  return head('Kiosks', 'Each kiosk now: in service or why not, the cash in its box, and the collections waiting to be counted at the office.') + kioskTabs() + body;
+  const all = kiosks(), f = state.kioskFilter;
+  const list = all.filter((t) => kioskMatches(t, f)).sort((a, b) => nextStep(a).rank - nextStep(b).rank || a.code.localeCompare(b.code));
+  const n = (status) => all.filter((t) => kioskMatches(t, { q: '', status })).length;
+  const now = '<div class="sheet ktools record-tools"><input type="search" aria-label="Search kiosks" placeholder="Search kiosk or branch" value="' + esc(f.q) + '" oninput="setKioskFilter({q:this.value})">' +
+    '<div class="record-filters" role="group" aria-label="Kiosk status">' + STATUS_FILTERS.map(([v, l]) => '<button aria-pressed="' + (f.status === v) + '" onclick="setKioskFilter({status:\'' + v + '\'})">' + l + ' <span class="fcount">' + n(v) + '</span></button>').join('') + '</div>' +
+    '<span class="record-count">' + list.length + ' of ' + all.length + ' kiosks</span>' +
+    '<div class="record-filters view-toggle" role="group" aria-label="Show as">' + [['cards', 'Cards'], ['list', 'List']].map(([v, l]) => '<button aria-pressed="' + (state.kioskView === v) + '" onclick="state.kioskView=\'' + v + '\';render()">' + l + '</button>').join('') + '</div></div>' +
+    kioskQueue(list) +
+    (state.kioskView === 'list' ? kioskListHtml(list) : list.length ? '<div class="kgrid">' + list.map(kioskCardHtml).join('') + '</div>' : '<div class="sheet pad muted">No kiosks match these filters.</div>') +
+    '<p class="small muted" style="margin-top:10px">Updated as each kiosk syncs (every 15 s while online). Not heard from for 10 minutes: shown as offline.</p>';
+  return head('Kiosks', 'Each kiosk now: what needs someone first, the cash in each box, and the boxes waiting for the office count.') + kioskTabs() + ((state.kioskTab || 'now') === 'now' ? now : collectionsTab());
+}
+/* Cash collections: the boxes to count first, the ones that differed, then the rest. */
+function collectionsTab() {
+  const f = state.collectionFilter, q = f.q.trim().toLowerCase();
+  const rows = COLLECTIONS.filter((c) => (f.status === 'ALL' || (f.status === 'OPEN' && !c.counted) || (f.status === 'DIFF' && c.counted && diffOf(c) !== 0) || (f.status === 'MATCH' && c.counted && diffOf(c) === 0)) &&
+    (!q || (c.kiosk + ' ' + term(c.kiosk).name + ' ' + c.by).toLowerCase().includes(q)));
+  const open = COLLECTIONS.filter((c) => !c.counted), waiting = open.reduce((sum, c) => sum + toCents(c.expected), 0);
+  const counts = { ALL: COLLECTIONS.length, OPEN: open.length, DIFF: COLLECTIONS.filter((c) => c.counted && diffOf(c) !== 0).length, MATCH: COLLECTIONS.filter((c) => c.counted && diffOf(c) === 0).length };
+  return '<div class="sheet ktools record-tools"><input type="search" aria-label="Search collections" placeholder="Search kiosk or collector" value="' + esc(f.q) + '" oninput="state.collectionFilter.q=this.value;render()">' +
+    '<div class="record-filters" role="group" aria-label="Count">' + [['OPEN', 'To count'], ['DIFF', 'Differences'], ['MATCH', 'Matched'], ['ALL', 'All']].map(([v, l]) => '<button aria-pressed="' + (f.status === v) + '" onclick="state.collectionFilter.status=\'' + v + '\';render()">' + l + ' <span class="fcount">' + counts[v] + '</span></button>').join('') + '</div>' +
+    '<span class="record-count">' + (open.length ? '<b>' + peso((waiting / 100).toFixed(2)) + '</b> waiting for the count' : 'Every box is counted') + '</span>' +
+    '<button class="btn sm" onclick="slipDialog()">Record from a slip</button></div>' +
+    (rows.length ? collectionsTable(rows, true) : '<div class="sheet pad muted">No collections match these filters.</div>');
 }
 const diffOf = (c) => toCents(c.counted) - toCents(c.expected);
 function collectionsTable(rows, withKiosk) {
